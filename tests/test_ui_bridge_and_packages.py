@@ -105,6 +105,7 @@ class TestVerifiedUIBridgeAndPackages(unittest.TestCase):
                     "widgets/Gameplay/SocialMedia/SocialMediaPanel.as",
                     "widgets/Gameplay/SocialMedia/SocialMediaReactionCellView.as",
                     "widgets/Gameplay/SocialMedia/SocialMediaFeedCellView.as",
+                    "widgets/Gameplay/SocialMedia/SocialMediaMessageDMCellView.as",
                 ):
                     continue
                 current_path = os.path.join(current, relative)
@@ -114,7 +115,7 @@ class TestVerifiedUIBridgeAndPackages(unittest.TestCase):
                     actual = handle.read()
                 self.assertEqual(actual, expected, msg="Vanilla script changed: {}".format(relative))
                 compared += 1
-        self.assertGreaterEqual(compared, 28)
+        self.assertGreaterEqual(compared, 27)
 
 
 if __name__ == "__main__":

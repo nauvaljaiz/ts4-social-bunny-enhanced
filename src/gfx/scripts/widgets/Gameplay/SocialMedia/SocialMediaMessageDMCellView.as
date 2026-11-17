@@ -56,6 +56,8 @@ package widgets.Gameplay.SocialMedia
       
       protected var mMinutesSincePost:uint;
       
+      protected var mLastReactionsSignature:String = "";
+      
       public function SocialMediaMessageDMCellView()
       {
          addFrameScript(9,this.frame10,19,this.frame20,29,this.frame30,39,this.frame40,49,this.frame50,59,this.frame60,69,this.frame70,79,this.frame80,89,this.frame90);
@@ -80,16 +82,16 @@ package widgets.Gameplay.SocialMedia
          super.Draw(param1,param2);
          this.mSocialMediaData = param1 as SocialMediaFeedItem;
          this.mMinutesSincePost = SocialMediaMain.GetMinutesSincePostTime(uint(this.mSocialMediaData.post_time));
-         this.RefreshLayout();
+         this.RefreshLayout(true);
       }
       
       override public function SetState(param1:String) : void
       {
          super.SetState(param1);
-         this.RefreshLayout();
+         this.RefreshLayout(false);
       }
       
-      protected function RefreshLayout() : void
+      protected function RefreshLayout(param1:Boolean = true) : void
       {
          var _loc2_:Object = null;
          if(this.mSocialMediaData == null)
@@ -117,11 +119,35 @@ package widgets.Gameplay.SocialMedia
                this.btnReaction.addEventListener(PushButtonEvent.CLICK,this.OnReactionClick,false,0,true);
             }
          }
-         if(this.mSocialMediaData.reactions.length > 0)
+         if(this.mSocialMediaData.reactions != null && this.mSocialMediaData.reactions.length > 0)
          {
             this.mcReactionsGrid.visible = true;
-            this.mFeedData.RemoveAllItems();
-            this.mFeedData.AddItemsFromIterable(this.mSocialMediaData.reactions);
+            var _loc4_:String = "";
+            var _loc5_:int = 0;
+            while(_loc5_ < this.mSocialMediaData.reactions.length)
+            {
+               var _loc6_:Object = this.mSocialMediaData.reactions[_loc5_];
+               if(_loc6_ != null)
+               {
+                  _loc4_ += String(_loc6_.narrative_type) + ":" + String(_loc6_.polarity_type) + ":" + String(_loc6_.count) + "|";
+               }
+               _loc5_++;
+            }
+            if(_loc4_ != this.mLastReactionsSignature || this.mFeedData.length != this.mSocialMediaData.reactions.length)
+            {
+               this.mLastReactionsSignature = _loc4_;
+               this.mFeedData.RemoveAllItems();
+               this.mFeedData.AddItemsFromIterable(this.mSocialMediaData.reactions);
+            }
+         }
+         else
+         {
+            this.mcReactionsGrid.visible = false;
+            if(this.mFeedData.length > 0)
+            {
+               this.mLastReactionsSignature = "";
+               this.mFeedData.RemoveAllItems();
+            }
          }
          if(this.mcControllerConfirmAction)
          {

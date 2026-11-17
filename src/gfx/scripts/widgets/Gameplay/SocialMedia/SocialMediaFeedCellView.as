@@ -57,6 +57,8 @@ package widgets.Gameplay.SocialMedia
       
       protected var mMinutesSincePost:uint;
       
+      protected var mLastReactionsSignature:String = "";
+      
       public function SocialMediaFeedCellView()
       {
          addFrameScript(9,this.frame10,19,this.frame20,29,this.frame30,39,this.frame40,49,this.frame50,59,this.frame60,69,this.frame70,79,this.frame80,89,this.frame90);
@@ -100,7 +102,6 @@ package widgets.Gameplay.SocialMedia
          }
          this.btnAddFriend.visible = false;
          this.btnReaction.visible = false;
-         this.mcReactionsGrid.visible = false;
          var _loc1_:IconComponent = this.mcSimPortrait.mcSimIcon as IconComponent;
          ImageUtils.LoadSimThumbnail(_loc1_,this.mSocialMediaData.author_sim_id,ImageUtils.SIM_THUMBNAIL_TYPE_BUST);
          this.txtSimName.htmlText = KeysGP.SOCIAL_MEDIA_POST_SIM_NAME.toString({"simId":this.mSocialMediaData.author_sim_id});
@@ -137,16 +138,34 @@ package widgets.Gameplay.SocialMedia
             }
             this.btnReaction.visible = false;
          }
-         if(this.mSocialMediaData.reactions != null)
+         if(this.mSocialMediaData.reactions != null && this.mSocialMediaData.reactions.length > 0)
          {
-            if(this.mSocialMediaData.reactions.length > 0)
+            this.mcReactionsGrid.visible = true;
+            var _loc4_:String = "";
+            var _loc5_:int = 0;
+            while(_loc5_ < this.mSocialMediaData.reactions.length)
             {
-               this.mcReactionsGrid.visible = true;
-               if(param1 || this.mFeedData.length != this.mSocialMediaData.reactions.length)
+               var _loc6_:Object = this.mSocialMediaData.reactions[_loc5_];
+               if(_loc6_ != null)
                {
-                  this.mFeedData.RemoveAllItems();
-                  this.mFeedData.AddItemsFromIterable(this.mSocialMediaData.reactions);
+                  _loc4_ += String(_loc6_.narrative_type) + ":" + String(_loc6_.polarity_type) + ":" + String(_loc6_.count) + "|";
                }
+               _loc5_++;
+            }
+            if(_loc4_ != this.mLastReactionsSignature || this.mFeedData.length != this.mSocialMediaData.reactions.length)
+            {
+               this.mLastReactionsSignature = _loc4_;
+               this.mFeedData.RemoveAllItems();
+               this.mFeedData.AddItemsFromIterable(this.mSocialMediaData.reactions);
+            }
+         }
+         else
+         {
+            this.mcReactionsGrid.visible = false;
+            if(this.mFeedData.length > 0)
+            {
+               this.mLastReactionsSignature = "";
+               this.mFeedData.RemoveAllItems();
             }
          }
          InputModeVisibilityExtension.ShowForController(this.mcControllerConfirmAction);

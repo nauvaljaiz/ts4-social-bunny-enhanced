@@ -29,6 +29,18 @@ package widgets.Gameplay.SocialMedia
       public function SocialMediaReactionCellView()
       {
          super();
+         this.addFrameScript(0,this.OnReactionFrame,1,this.OnReactionFrame);
+         this.stop();
+         this.gotoAndStop("reaction");
+      }
+      
+      private function OnReactionFrame() : void
+      {
+         this.stop();
+         if(this.currentFrame != 1)
+         {
+            this.gotoAndStop("reaction");
+         }
       }
       
       override public function Draw(param1:Object, param2:Object = null) : void
@@ -44,28 +56,27 @@ package widgets.Gameplay.SocialMedia
          {
             return;
          }
-         if(this.currentLabel != "reaction" || this.txtCounter == null)
+         this.stop();
+         if(this.currentFrame != 1 || this.txtCounter == null)
          {
-            gotoAndStop("reaction");
+            this.gotoAndStop("reaction");
+            this.stop();
          }
          var _loc5_:int = _loc3_.count;
          var _loc6_:String = _loc5_ >= 1000 ? String(Math.floor(_loc5_ / 1000)) + "k" : _loc5_.toString();
-         this.txtCounter.wordWrap = false;
-         this.txtCounter.multiline = false;
-         this.txtCounter.autoSize = TextFieldAutoSize.NONE;
-         if(this.txtCounter.width < 28)
+         if(this.txtCounter != null)
          {
+            this.txtCounter.wordWrap = false;
+            this.txtCounter.multiline = false;
+            this.txtCounter.autoSize = TextFieldAutoSize.NONE;
             this.txtCounter.x = 25;
-            this.txtCounter.width = 28;
-         }
-         this.txtCounter.scrollH = 0;
-         if(_loc5_ >= 99)
-         {
-            this.txtCounter.htmlText = "<p align=\"left\"><font size=\"10\" color=\"#0949ab\">" + _loc6_ + "</font></p>";
-         }
-         else
-         {
-            this.txtCounter.htmlText = _loc6_;
+            this.txtCounter.width = 23;
+            this.txtCounter.scrollH = 0;
+            var _loc7_:String = _loc5_ >= 99 ? "<p align=\"left\"><font size=\"10\" color=\"#0949ab\">" + _loc6_ + "</font></p>" : "<p align=\"left\"><font size=\"12\" color=\"#0949ab\">" + _loc6_ + "</font></p>";
+            if(this.txtCounter.htmlText != _loc7_)
+            {
+               this.txtCounter.htmlText = _loc7_;
+            }
          }
          this.mcFriendly01.visible = false;
          this.mcFriendly02.visible = false;
