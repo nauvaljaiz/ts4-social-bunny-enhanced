@@ -1,0 +1,710 @@
+package gamedata.BuildBuy.constants
+{
+   public final class FilterCategories
+   {
+      
+      public static const MIN_TAG:uint = 161;
+      
+      public static const MAX_TAG:uint = 57401;
+      
+      public static const BUYCAT_EE_TV:uint = 268288540;
+      
+      public static const BUYCAT_EE_TV_SET:uint = 4202544943;
+      
+      public static const BUYCAT_EE_TV_STAND:uint = 2723094556;
+      
+      public static const BUYCAT_EE_COMPUTER:uint = 4219284685;
+      
+      public static const BUYCAT_EE_AUDIO:uint = 2624015004;
+      
+      public static const BUYCAT_EE_PARTY:uint = 1635490498;
+      
+      public static const BUYCAT_EE_KIDFURNITURE:uint = 350006940;
+      
+      public static const BUYCAT_EE_KIDTOY:uint = 2679018218;
+      
+      public static const BUYCAT_EE_ALARM:uint = 2871023773;
+      
+      public static const BUYCAT_EE_CLOCK:uint = 3838068892;
+      
+      public static const BUYCAT_EE_TODDLERS:uint = 3495035889;
+      
+      public static const BUYCAT_EE_INDOORACTIVITY:uint = 3846717992;
+      
+      public static const BUYCAT_EE_KIDACTIVITY:uint = 1625799809;
+      
+      public static const BUYCAT_EE_OUTDOORACTIVITY:uint = 1316320293;
+      
+      public static const BUYCAT_EE_CREATIVEACTIVITY:uint = 853066326;
+      
+      public static const BUYCAT_EE_KNOWLEDGEACTIVITY:uint = 2532103281;
+      
+      public static const BUYCAT_EE_ACTIVEACTIVITY:uint = 1747851755;
+      
+      public static const BUYCAT_EE_BAR:uint = 865208473;
+      
+      public static const BUYCAT_EE_MISCELECTRONICS:uint = 1588102531;
+      
+      public static const BUYCAT_EE_MISCENTERTAINMENT:uint = 332886572;
+      
+      public static const BUYCAT_EE_MISCKIDS:uint = 3522176773;
+      
+      public static const BUYCAT_EE_PETTOYS:uint = 2364764666;
+      
+      public static const BUYCAT_EE_PETACTIVITYTOYS:uint = 3260054701;
+      
+      public static const BUYCAT_EE_PETVET:uint = 3087394318;
+      
+      public static const BUYCAT_EE_PETMISC:uint = 4198320553;
+      
+      public static const BUYCAT_EE_GARDENING:uint = 2298753795;
+      
+      public static const BUYCAT_EE_TRANSPORTATION:uint = 281815036;
+      
+      public static const BUYCAT_EE_LIFEEVENTACTIVITY:uint = 364496039;
+      
+      public static const BUYCAT_EE_SMALL_BUSINESS:uint = 1542663195;
+      
+      public static const BUYCAT_PA_SINK:uint = 2061659602;
+      
+      public static const BUYCAT_PA_SINK_COUNTER:uint = 1778287410;
+      
+      public static const BUYCAT_PA_TOILET:uint = 2293237652;
+      
+      public static const BUYCAT_PA_SINK_FREESTANDING:uint = 3519620364;
+      
+      public static const BUYCAT_PA_SHOWER:uint = 1053129381;
+      
+      public static const BUYCAT_PA_TUB:uint = 2852142124;
+      
+      public static const BUYCAT_PA_LARGEAPPLIANCE:uint = 1654938037;
+      
+      public static const BUYCAT_PA_SMALLAPPLIANCE:uint = 3650789037;
+      
+      public static const BUYCAT_PA_STOVE:uint = 3960467362;
+      
+      public static const BUYCAT_PA_STOVE_HOOD:uint = 1239156404;
+      
+      public static const BUYCAT_PA_DISPOSABLE:uint = 3907042069;
+      
+      public static const BUYCAT_PA_DISPOSAL_INDOOR:uint = 2954039151;
+      
+      public static const BUYCAT_PA_DISPOSAL_OUTDOOR:uint = 179355162;
+      
+      public static const BUYCAT_PA_REFRIGERATOR:uint = 4222774397;
+      
+      public static const BUYCAT_PA_OUTDOORCOOKING:uint = 4092569907;
+      
+      public static const BUYCAT_PA_COFFEE_MAKER:uint = 4143383821;
+      
+      public static const BUYCAT_PA_MICROWAVE:uint = 1803203410;
+      
+      public static const BUYCAT_PA_MISCSMALLAPPLIANCE:uint = 2674644801;
+      
+      public static const BUYCAT_PA_MISCPLUMBING:uint = 3752800775;
+      
+      public static const BUYCAT_PA_MISCAPPLIANCE:uint = 3447435028;
+      
+      public static const BUYCAT_PA_PETCARE:uint = 2961577945;
+      
+      public static const BUYCAT_PA_PETFOOD:uint = 3993139062;
+      
+      public static const BUYCAT_PA_LITTERBOX:uint = 3240492654;
+      
+      public static const BUYCAT_PA_PUBLICRESTROOM:uint = 608663043;
+      
+      public static const BUYCAT_LD_BATHROOMACCENT:uint = 2624485584;
+      
+      public static const BUYCAT_LD_LAWNORNAMENT:uint = 967197946;
+      
+      public static const BUYCAT_LD_KIDDECORATION:uint = 534057422;
+      
+      public static const BUYCAT_LD_WINDOW_TREATMENT:uint = 2651834680;
+      
+      public static const BUYCAT_LD_CURTAINBLIND:uint = 247216879;
+      
+      public static const BUYCAT_LD_AWNING:uint = 3675600854;
+      
+      public static const BUYCAT_LD_RUG:uint = 3560701190;
+      
+      public static const BUYCAT_LD_SCULPTURE:uint = 1985912893;
+      
+      public static const BUYCAT_LD_WALLDECORATION:uint = 866325070;
+      
+      public static const BUYCAT_LD_PLANT:uint = 3104870159;
+      
+      public static const BUYCAT_LD_TABLELAMP:uint = 3396099690;
+      
+      public static const BUYCAT_LD_FLOORLAMP:uint = 2488098296;
+      
+      public static const BUYCAT_LD_CEILINGLIGHT:uint = 601523131;
+      
+      public static const BUYCAT_LD_OUTDOORLIGHT:uint = 828900200;
+      
+      public static const BUYCAT_LD_MIRROR:uint = 3350470489;
+      
+      public static const BUYCAT_LD_MIRROR_WALL:uint = 2884070917;
+      
+      public static const BUYCAT_LD_MIRROR_FREESTANDING:uint = 1172714195;
+      
+      public static const BUYCAT_LD_MISCLIGHT:uint = 2282657660;
+      
+      public static const BUYCAT_LD_MISCDECORATION:uint = 612734202;
+      
+      public static const BUYCAT_SS_COUNTER:uint = 2248713450;
+      
+      public static const BUYCAT_SS_CABINET:uint = 1908199642;
+      
+      public static const BUYCAT_SS_DININGTABLE:uint = 1319341547;
+      
+      public static const BUYCAT_SS_DININGTABLE_SHORT:uint = 3116324675;
+      
+      public static const BUYCAT_SS_DININGTABLE_LONG:uint = 1842085733;
+      
+      public static const BUYCAT_SS_ACCENTTABLE:uint = 1963999668;
+      
+      public static const BUYCAT_SS_HALLWAYTABLE:uint = 1862007620;
+      
+      public static const BUYCAT_SS_ENDTABLE:uint = 2922214079;
+      
+      public static const BUYCAT_SS_COFFEETABLE:uint = 4206619218;
+      
+      public static const BUYCAT_SS_DESK:uint = 2854740125;
+      
+      public static const BUYCAT_SS_DISPLAY:uint = 2823917556;
+      
+      public static const BUYCAT_SS_DININGCHAIR:uint = 3613874432;
+      
+      public static const BUYCAT_SS_SOFA:uint = 3796961211;
+      
+      public static const BUYCAT_SS_LOVESEAT:uint = 1493412249;
+      
+      public static const BUYCAT_SS_OUTDOORCHAIR:uint = 1054851237;
+      
+      public static const BUYCAT_SS_LIVINGCHAIR:uint = 1075443952;
+      
+      public static const BUYCAT_SS_DESKCHAIR:uint = 1618702408;
+      
+      public static const BUYCAT_SS_OUTDOORSEATING:uint = 4200157463;
+      
+      public static const BUYCAT_SS_OUTDOORBENCHES:uint = 3525456324;
+      
+      public static const BUYCAT_SS_OUTDOORTABLES:uint = 3071552502;
+      
+      public static const BUYCAT_SS_BARSTOOL:uint = 3149139410;
+      
+      public static const BUYCAT_SS_BED:uint = 1842629303;
+      
+      public static const BUYCAT_SS_BUNKBED:uint = 1961225697;
+      
+      public static const BUYCAT_SS_BED_SINGLE:uint = 3330737635;
+      
+      public static const BUYCAT_SS_BED_DOUBLE:uint = 4199133352;
+      
+      public static const BUYCAT_SS_BOOKSHELF:uint = 3105452935;
+      
+      public static const BUYCAT_SS_DRESSER:uint = 2238710614;
+      
+      public static const BUYCAT_SS_MISCSURFACE:uint = 2452183887;
+      
+      public static const BUYCAT_SS_MISCCOMFORT:uint = 207543774;
+      
+      public static const BUYCAT_SS_MISCSTORAGE:uint = 3299293337;
+      
+      public static const BUYCAT_SS_PETFURNITURE:uint = 1939500893;
+      
+      public static const BUYCAT_SS_PETBED:uint = 1096803006;
+      
+      public static const BUYCAT_SS_SCRATCHINGPOST:uint = 3003419466;
+      
+      public static const BUYCAT_LD_WALLLIGHT:uint = 3611607104;
+      
+      public static const BUYCAT_LD_FIREPLACES:uint = 1416911501;
+      
+      public static const BUYCAT_LD_CLUTTER:uint = 2460057627;
+      
+      public static const BUYCAT_LD_WALLSCULPTURE:uint = 3159340873;
+      
+      public static const BUYCAT_LD_FOUNTAINDECORATION:uint = 2008489262;
+      
+      public static const BUYCAT_LD_FOUNTAINOBJECTS:uint = 860078296;
+      
+      public static const BUYCAT_LD_FOUNTAINEMITTER:uint = 465387854;
+      
+      public static const BUYCAT_LD_POOLOBJECTS:uint = 4158942790;
+      
+      public static const BUYCAT_LD_POOLDECORATIONS:uint = 3748345419;
+      
+      public static const BUYCAT_LD_CEILINGDECORATION:uint = 2397186395;
+      
+      public static const BUYCAT_LD_POOLOBJECTS_INVENTORYABLE:uint = 1358448942;
+      
+      public static const BUYCAT_MAG_LIVINGROOM:uint = 534705075;
+      
+      public static const BUYCAT_MAG_BATHROOM:uint = 2404531291;
+      
+      public static const BUYCAT_MAG_BEDROOM:uint = 122951427;
+      
+      public static const BUYCAT_MAG_DINNINGROOM:uint = 498218195;
+      
+      public static const BUYCAT_MAG_KITCHEN:uint = 4228442727;
+      
+      public static const BUYCAT_MAG_OUTDOOR:uint = 3774619467;
+      
+      public static const BUYCAT_MAG_STUDY:uint = 729332156;
+      
+      public static const BUYCAT_MAG_MISC:uint = 1387258085;
+      
+      public static const BUYCAT_MAG_CAREER:uint = 2227393343;
+      
+      public static const BUYCAT_MAG_KIDS:uint = 3964127966;
+      
+      public static const BUYCAT_COMMUNITY:uint = 579425687;
+      
+      public static const BUYCAT_VENUE_BAR:uint = 3070092483;
+      
+      public static const BUYCAT_VENUE_CLUB:uint = 1182125696;
+      
+      public static const BUYCAT_VENUE_FORESTPARK:uint = 1641823971;
+      
+      public static const BUYCAT_VENUE_GYM:uint = 3136761685;
+      
+      public static const BUYCAT_VENUE_LIBRARY:uint = 1969886509;
+      
+      public static const BUYCAT_VENUE_LOUNGE:uint = 370023642;
+      
+      public static const BUYCAT_VENUE_MUSEUM:uint = 3679925400;
+      
+      public static const BUYCAT_VENUE_PARK:uint = 3779874764;
+      
+      public static const BUYCAT_VENUE_RETAIL:uint = 3786174249;
+      
+      public static const BUYCAT_VENUE_DOCTORCLINIC:uint = 2042889481;
+      
+      public static const BUYCAT_VENUE_POLICESTATION:uint = 3624200434;
+      
+      public static const BUYCAT_VENUE_SCIENTISTLAB:uint = 511621843;
+      
+      public static const BUYCAT_VENUE_RELAXATIONCENTER:uint = 1193002362;
+      
+      public static const BUYCAT_VENUE_RESTAURANT:uint = 1019363465;
+      
+      public static const BUYCAT_VENUE_ARTSCENTER:uint = 4264327145;
+      
+      public static const BUYCAT_VENUE_KARAOKE:uint = 1677554358;
+      
+      public static const BUYCAT_VENUE_STARGARDEN:uint = 4134853311;
+      
+      public static const BUYCAT_VENUE_VETCLINIC:uint = 3139174501;
+      
+      public static const BUYCAT_HOLIDAY_ALL:uint = 457967800;
+      
+      public static const BUYCAT_HOLIDAY_DECOR_ALL:uint = 2065303714;
+      
+      public static const BUYCAT_OTG_APPLIANCES:uint = 2328751299;
+      
+      public static const BUYCAT_OTG_CRAFTING:uint = 211090537;
+      
+      public static const BUYCAT_OTG_LIGHTING:uint = 758028303;
+      
+      public static const BUYCAT_OTG_MISC:uint = 649687327;
+      
+      public static const BUYCAT_OTG_OUTDOORACTIVITIES:uint = 3498345142;
+      
+      public static const BUYCAT_OTG_PLUMBING:uint = 1609932651;
+      
+      public static const BUILDTAG_BUILD_WATER_STYLES:uint = 1868397127;
+      
+      public static const BUYCAT_BUILD_POND_ITEMS:uint = 2124451941;
+      
+      public static const BUYCAT_BUILD_FOUNTAIN_DECOR:uint = 2247319575;
+      
+      public static const BUYCAT_BUILD_POOL_OBJECTS:uint = 2559503872;
+      
+      public static const BUYCAT_BUILD_ATTRACTORS:uint = 4002738769;
+      
+      public static const BUYCAT_ROOM_WATER_DECOR:uint = 1145856701;
+      
+      public static const BUILDTAG_FUNCTION_WATER_STYLES:uint = 2097696693;
+      
+      public static const BUYCAT_FUNCTION_ATTRACTORS:uint = 637656155;
+      
+      public static const BUYCAT_FUNCTION_FOUNTAIN_DECOR:uint = 991708481;
+      
+      public static const BUYCAT_FUNCTION_POOL_OBJECTS:uint = 1479433022;
+      
+      public static const BUYCAT_FUNCTION_EMITTERS:uint = 4183512172;
+      
+      public static const BUYCAT_FUNCTION_OPENWATER_OBJECTS:uint = 231764871;
+      
+      public static const BUYCAT_VENUE_PENTHOUSE:uint = 1097627925;
+      
+      public static const BUYCAT_LOTREQ_ELEVATOR:uint = 4073974700;
+      
+      public static const BUYCAT_LOTREQ_MAILBOX:uint = 2486233630;
+      
+      public static const BUYCAT_LOTREQ_TRASHCHUTE:uint = 4033676915;
+      
+      public static const BUILDTAG_DOOR:uint = 2267868838;
+      
+      public static const BUILDTAG_DOOR_SINGLE:uint = 2089553550;
+      
+      public static const BUILDTAG_DOOR_DOUBLE:uint = 3079221413;
+      
+      public static const BUILDTAG_DOOR_CURVED:uint = 2594564753;
+      
+      public static const BUILDTAG_DOOR_CURVED_SMALL:uint = 1436984694;
+      
+      public static const BUILDTAG_WINDOW:uint = 3943933846;
+      
+      public static const BUILDTAG_WINDOW_CURVED:uint = 1062348961;
+      
+      public static const BUILDTAG_WINDOW_CURVED_SMALL:uint = 1462102278;
+      
+      public static const BUILDTAG_GATE:uint = 294085771;
+      
+      public static const BUILDTAG_GATE_SINGLE:uint = 2423814711;
+      
+      public static const BUILDTAG_GATE_DOUBLE:uint = 3206101156;
+      
+      public static const BUILDTAG_COLUMN:uint = 3019582428;
+      
+      public static const BUILDTAG_ROOF_ATTACHMENT:uint = 3884914619;
+      
+      public static const BUILDTAG_ROOF_CHIMNEY:uint = 1147144965;
+      
+      public static const BUILDTAG_ROOF_ATTACHMENT_MISC:uint = 3674849711;
+      
+      public static const BUILDTAG_ROOF:uint = 2462051804;
+      
+      public static const BUILDTAG_ROOF_ORTHOGONAL:uint = 2747439937;
+      
+      public static const BUILDTAG_ROOF_DIAGONAL:uint = 3072675081;
+      
+      public static const BUILDTAG_FLOOR_PATTERN:uint = 624786190;
+      
+      public static const BUILDTAG_WALL_PATTERN:uint = 903522772;
+      
+      public static const BUILDTAG_ROOF_PATTERN:uint = 1491844930;
+      
+      public static const BUILDTAG_FENCE:uint = 273078349;
+      
+      public static const BUILDTAG_SPANDREL:uint = 3184442903;
+      
+      public static const BUILDTAG_STAIR:uint = 4051083681;
+      
+      public static const BUILDTAG_LADDER:uint = 4280927666;
+      
+      public static const BUILDTAG_RAILING:uint = 2854049842;
+      
+      public static const BUILDTAG_BLOCK:uint = 3644821849;
+      
+      public static const BUILDTAG_STYLE:uint = 4097473537;
+      
+      public static const BUILDTAG_FRIEZE:uint = 2464270411;
+      
+      public static const BUILDTAG_ROOF_TRIM:uint = 695866432;
+      
+      public static const BUILDTAG_FOUNDATION:uint = 869034281;
+      
+      public static const BUILDTAG_FLOOR_TRIM:uint = 1779132100;
+      
+      public static const BUILDTAG_WALL_ATTACHMENT:uint = 1721332345;
+      
+      public static const BUILDTAG_FLOWER:uint = 4058302767;
+      
+      public static const BUILDTAG_SHRUB:uint = 4131549514;
+      
+      public static const BUILDTAG_TREE:uint = 2373429654;
+      
+      public static const BUILDTAG_ROCK:uint = 2260720317;
+      
+      public static const BUILDTAG_ARCH:uint = 2451505538;
+      
+      public static const BUILDTAG_BLOCK_WALLTOOL:uint = 1431141110;
+      
+      public static const BUILDTAG_BLOCK_FOUNTAIN:uint = 3712692784;
+      
+      public static const BUILDTAG_BLOCK_FOUNTAIN_TOOL:uint = 4249285134;
+      
+      public static const BUILDTAG_BLOCK_DECK:uint = 3508798375;
+      
+      public static const BUILDTAG_BLOCK_WITH_WALLS:uint = 3348694595;
+      
+      public static const BUILDTAG_BLOCK_NO_WALLS:uint = 2018332252;
+      
+      public static const BUILDTAG_BLOCK_DIAGONAL:uint = 1834060113;
+      
+      public static const BUILDTAG_BLOCK_CURVED_WALL:uint = 294777995;
+      
+      public static const BUILDTAG_SHRUB_BUSH:uint = 1909111947;
+      
+      public static const BUILDTAG_SHRUB_CACTUS:uint = 4035316376;
+      
+      public static const BUILDTAG_FLOWER_GROUND_COVER:uint = 3817859324;
+      
+      public static const BUILDTAG_FLOWER_BUSH:uint = 3756503440;
+      
+      public static const BUILDTAG_FLOWER_MISC:uint = 3660051970;
+      
+      public static const BUILDTAG_FOUNTAINTRIM:uint = 4108081958;
+      
+      public static const BUILDTAG_BLOCK_POOL:uint = 1462728710;
+      
+      public static const BUILDTAG_BLOCK_POOL_TOOL:uint = 4069678516;
+      
+      public static const BUILDTAG_BLOCK_BASEMENT:uint = 3968150523;
+      
+      public static const BUILDTAG_HALFWALL:uint = 1864697749;
+      
+      public static const BUILDTAG_HALFWALL_TRIM:uint = 1757338669;
+      
+      public static const BUILDTAG_POOL_TRIM:uint = 2325901984;
+      
+      public static const BUILDTAG_POOL_STYLES:uint = 755800842;
+      
+      public static const BUILDTAG_BLOCK_PLATFORM_TOOL:uint = 2136840531;
+      
+      public static const BUILDTAG_BLOCK_PLATFORM:uint = 4090466069;
+      
+      public static const BUILDTAG_PLATFORM_TRIM:uint = 466521227;
+      
+      public static const FLOORPATTERN_CARPET:uint = 1483080237;
+      
+      public static const FLOORPATTERN_TILE:uint = 31927048;
+      
+      public static const FLOORPATTERN_WOOD:uint = 654910939;
+      
+      public static const FLOORPATTERN_STONE:uint = 1255266387;
+      
+      public static const FLOORPATTERN_MASONRY:uint = 4081164769;
+      
+      public static const FLOORPATTERN_LINOLEUM:uint = 811875887;
+      
+      public static const FLOORPATTERN_METAL:uint = 4018442389;
+      
+      public static const FLOORPATTERN_MISC:uint = 864851332;
+      
+      public static const FLOORPATTERN_OUTDOOR:uint = 2931066848;
+      
+      public static const WALLPATTERN_PAINT:uint = 3640178888;
+      
+      public static const WALLPATTERN_WALLPAPER:uint = 4132289334;
+      
+      public static const WALLPATTERN_TILE:uint = 418378592;
+      
+      public static const WALLPATTERN_PANELING:uint = 3202045930;
+      
+      public static const WALLPATTERN_MASONRY:uint = 2694934441;
+      
+      public static const WALLPATTERN_ROCKANDSTONE:uint = 3694901385;
+      
+      public static const WALLPATTERN_SIDING:uint = 3919624856;
+      
+      public static const WALLPATTERN_MISC:uint = 3272472028;
+      
+      public static const TERRAIN_PAINT_DIRT:uint = 3742511892;
+      
+      public static const TERRAIN_PAINT_GRASS:uint = 2259600291;
+      
+      public static const TERRAIN_PAINT_STONE:uint = 1037191082;
+      
+      public static const TERRAIN_PAINT_MISC:uint = 3801002111;
+      
+      public static const TERRAIN_PAINT_ALL:uint = 723383288;
+      
+      public static const TERRAIN_MANIP_ALL:uint = 3164297159;
+      
+      public static const PONDTOOL_ALL:uint = 1825702023;
+      
+      public static const RECIPE_TYPE_FOOD:uint = 176545285;
+      
+      public static const RECIPE_TYPE_DRINK:uint = 273535225;
+      
+      public static const RECIPE_CHILD_RESTRICTED:uint = 1506089131;
+      
+      public static const RECIPE_GLASS_OF_WATER:uint = 3593012810;
+      
+      public static const FUNC_21ANNIVERSAY:uint = 938786144;
+      
+      public static const FUNC_SPECIAL_REWARD_LIVEEVENT:uint = 86802584;
+      
+      public static const BUYGROUP_MAGALOG:Array = [BUYCAT_MAG_KITCHEN,BUYCAT_MAG_BATHROOM,BUYCAT_MAG_BEDROOM,BUYCAT_MAG_LIVINGROOM,BUYCAT_MAG_DINNINGROOM,BUYCAT_MAG_STUDY,BUYCAT_MAG_KIDS,BUYCAT_MAG_OUTDOOR,BUYCAT_MAG_MISC];
+      
+      public static const BUYGROUP_TOILETS:Array = [BUYCAT_PA_TOILET,BUYCAT_PA_LITTERBOX,BUYCAT_PA_PUBLICRESTROOM];
+      
+      public static const BUYGROUP_PLUMBING:Array = [BUYCAT_PA_SINK,BUYCAT_PA_TOILET,BUYCAT_PA_LITTERBOX,BUYCAT_PA_PUBLICRESTROOM,BUYCAT_PA_SHOWER,BUYCAT_PA_TUB];
+      
+      public static const BUYGROUP_PLUMBING_SORT:Array = [BUYCAT_PA_SINK_FREESTANDING,BUYCAT_PA_SINK_COUNTER,BUYCAT_PA_SINK,BUYCAT_PA_TOILET,BUYCAT_PA_LITTERBOX,BUYCAT_PA_SHOWER,BUYCAT_PA_TUB];
+      
+      public static const BUYGROUP_SINK_SORT:Array = [BUYCAT_PA_SINK_FREESTANDING,BUYCAT_PA_SINK_COUNTER,BUYCAT_PA_SINK];
+      
+      public static const BUYGROUP_APPLIANCES:Array = [BUYCAT_PA_REFRIGERATOR,BUYCAT_PA_STOVE,BUYCAT_PA_STOVE_HOOD,BUYCAT_PA_SMALLAPPLIANCE,BUYCAT_PA_LARGEAPPLIANCE,BUYCAT_PA_OUTDOORCOOKING,BUYCAT_PA_MISCAPPLIANCE];
+      
+      public static const BUYGROUP_APPLIANCES_SORT:Array = [BUYCAT_PA_REFRIGERATOR,BUYCAT_PA_STOVE,BUYCAT_PA_STOVE_HOOD,BUYCAT_PA_MICROWAVE,BUYCAT_PA_COFFEE_MAKER,BUYCAT_PA_MISCSMALLAPPLIANCE,BUYCAT_PA_SMALLAPPLIANCE,BUYCAT_PA_LARGEAPPLIANCE,BUYCAT_PA_OUTDOORCOOKING,BUYCAT_PA_MISCAPPLIANCE];
+      
+      public static const BUYGROUP_STOVE:Array = [BUYCAT_PA_STOVE,BUYCAT_PA_STOVE_HOOD];
+      
+      public static const BUYGROUP_APPLICANCES_KITCHEN_OTHER:Array = [BUYCAT_PA_SMALLAPPLIANCE,BUYCAT_PA_LARGEAPPLIANCE];
+      
+      public static const BUYGROUP_APPLICANCES_KITCHEN_OTHER_SORT:Array = [BUYCAT_PA_MICROWAVE,BUYCAT_PA_COFFEE_MAKER,BUYCAT_PA_MISCSMALLAPPLIANCE,BUYCAT_PA_SMALLAPPLIANCE,BUYCAT_PA_LARGEAPPLIANCE];
+      
+      public static const BUYGROUP_APPLIANCES_DISPOSAL_SORT:Array = [BUYCAT_PA_DISPOSAL_INDOOR,BUYCAT_PA_DISPOSAL_OUTDOOR,BUYCAT_PA_DISPOSABLE];
+      
+      public static const BUYGROUP_APPLIANCES_MISC:Array = [BUYCAT_PA_DISPOSABLE,BUYCAT_PA_PETFOOD,BUYCAT_EE_PETVET,BUYCAT_PA_MISCAPPLIANCE];
+      
+      public static const BUYGROUP_APPLIANCES_MISC_SORT:Array = [BUYCAT_PA_DISPOSAL_INDOOR,BUYCAT_PA_DISPOSAL_OUTDOOR,BUYCAT_PA_DISPOSABLE,BUYCAT_PA_PETFOOD,BUYCAT_EE_PETVET,BUYCAT_PA_MISCAPPLIANCE];
+      
+      public static const BUYGROUP_OUTDOOR_FURNITURE:Array = [BUYCAT_SS_OUTDOORSEATING,BUYCAT_SS_OUTDOORTABLES];
+      
+      public static const BUYGROUP_OUTDOOR_FURNITURE_SORT:Array = [BUYCAT_SS_OUTDOORCHAIR,BUYCAT_SS_OUTDOORBENCHES,BUYCAT_SS_OUTDOORSEATING,BUYCAT_SS_OUTDOORTABLES];
+      
+      public static const BUYGROUP_SURFACES:Array = [BUYCAT_SS_COUNTER,BUYCAT_SS_CABINET,BUYCAT_SS_DININGTABLE,BUYCAT_SS_ACCENTTABLE,BUYCAT_SS_COFFEETABLE,BUYCAT_SS_DESK,BUYCAT_SS_DISPLAY,BUYCAT_SS_OUTDOORTABLES,BUYCAT_SS_MISCSURFACE];
+      
+      public static const BUYGROUP_SURFACES_SORT:Array = [BUYCAT_SS_COUNTER,BUYCAT_SS_CABINET,BUYCAT_SS_DININGTABLE_SHORT,BUYCAT_SS_DININGTABLE_LONG,BUYCAT_SS_DININGTABLE,BUYCAT_SS_HALLWAYTABLE,BUYCAT_SS_ENDTABLE,BUYCAT_SS_ACCENTTABLE,BUYCAT_SS_COFFEETABLE,BUYCAT_SS_DESK,BUYCAT_SS_DISPLAY,BUYCAT_SS_OUTDOORTABLES,BUYCAT_SS_MISCSURFACE];
+      
+      public static const BUYGROUP_SURFACES_DINING_TABLE_SORT:Array = [BUYCAT_SS_DININGTABLE_SHORT,BUYCAT_SS_DININGTABLE_LONG,BUYCAT_SS_DININGTABLE];
+      
+      public static const BUYGROUP_SURFACES_ACCENT_TABLE_SORT:Array = [BUYCAT_SS_HALLWAYTABLE,BUYCAT_SS_ENDTABLE,BUYCAT_SS_ACCENTTABLE];
+      
+      public static const BUYGROUP_SURFACES_MISC:Array = [BUYCAT_SS_OUTDOORTABLES,BUYCAT_SS_MISCSURFACE];
+      
+      public static const BUYGROUP_COMFORT:Array = [BUYCAT_SS_BED,BUYCAT_SS_PETBED,BUYCAT_SS_LIVINGCHAIR,BUYCAT_SS_DININGCHAIR,BUYCAT_SS_BARSTOOL,BUYCAT_SS_DESKCHAIR,BUYCAT_SS_SOFA,BUYCAT_SS_LOVESEAT,BUYCAT_SS_OUTDOORSEATING,BUYCAT_SS_MISCCOMFORT];
+      
+      public static const BUYGROUP_COMFORT_SORT:Array = [BUYCAT_SS_BED_SINGLE,BUYCAT_SS_BED_DOUBLE,BUYCAT_SS_BUNKBED,BUYCAT_SS_BED,BUYCAT_SS_PETBED,BUYCAT_SS_LIVINGCHAIR,BUYCAT_SS_DININGCHAIR,BUYCAT_SS_BARSTOOL,BUYCAT_SS_DESKCHAIR,BUYCAT_SS_SOFA,BUYCAT_SS_LOVESEAT,BUYCAT_SS_OUTDOORCHAIR,BUYCAT_SS_OUTDOORBENCHES,BUYCAT_SS_OUTDOORSEATING,BUYCAT_SS_MISCCOMFORT];
+      
+      public static const BUYGROUP_COMFORT_BEDS:Array = [BUYCAT_SS_BED,BUYCAT_SS_PETBED];
+      
+      public static const BUYGROUP_COMFORT_BEDS_SORT:Array = [BUYCAT_SS_BED_SINGLE,BUYCAT_SS_BED_DOUBLE,BUYCAT_SS_BUNKBED,BUYCAT_SS_BED,BUYCAT_SS_PETBED];
+      
+      public static const BUYGROUP_COMFORT_OUTDOOR_SORT:Array = [BUYCAT_SS_OUTDOORCHAIR,BUYCAT_SS_OUTDOORBENCHES,BUYCAT_SS_OUTDOORSEATING];
+      
+      public static const BUYGROUP_COMFORT_MISC:Array = [BUYCAT_SS_BARSTOOL,BUYCAT_SS_MISCCOMFORT];
+      
+      public static const BUYGROUP_ELECTRONICS:Array = [BUYCAT_EE_TV_SET,BUYCAT_EE_TV_STAND,BUYCAT_EE_TV,BUYCAT_EE_COMPUTER,BUYCAT_EE_AUDIO,BUYCAT_EE_ALARM,BUYCAT_EE_CLOCK,BUYCAT_EE_MISCELECTRONICS];
+      
+      public static const BUYGROUP_TV_SORT:Array = [BUYCAT_EE_TV_SET,BUYCAT_EE_TV_STAND,BUYCAT_EE_TV];
+      
+      public static const BUYGROUP_ELECTRONICS_MISC:Array = [BUYCAT_EE_CLOCK,BUYCAT_EE_MISCELECTRONICS];
+      
+      public static const BUYGROUP_ENTERTAINMENT:Array = [BUYCAT_EE_KNOWLEDGEACTIVITY,BUYCAT_EE_CREATIVEACTIVITY,BUYCAT_EE_INDOORACTIVITY,BUYCAT_EE_ACTIVEACTIVITY,BUYCAT_EE_PARTY,BUYCAT_EE_BAR,BUYCAT_EE_PETACTIVITYTOYS,BUYCAT_EE_MISCENTERTAINMENT,BUYCAT_EE_GARDENING,BUYCAT_EE_OUTDOORACTIVITY,BUYCAT_EE_LIFEEVENTACTIVITY];
+      
+      public static const BUYGROUP_HOBBYSKILL:Array = [BUYCAT_EE_KNOWLEDGEACTIVITY,BUYCAT_EE_CREATIVEACTIVITY,BUYCAT_EE_ACTIVEACTIVITY,BUYCAT_EE_BAR];
+      
+      public static const BUYGROUP_CREATIVE:Array = [BUYCAT_EE_CREATIVEACTIVITY,BUYCAT_EE_BAR];
+      
+      public static const BUYGROUP_ENTERTAINMENT_MISC:Array = [BUYCAT_EE_PARTY,BUYCAT_EE_PETACTIVITYTOYS,BUYCAT_EE_MISCENTERTAINMENT];
+      
+      public static const BUYGROUP_DECORATION:Array = [BUYCAT_LD_PLANT,BUYCAT_LD_WALLDECORATION,BUYCAT_LD_MIRROR,BUYCAT_LD_WINDOW_TREATMENT,BUYCAT_LD_SCULPTURE,BUYCAT_LD_CEILINGDECORATION,BUYCAT_LD_CLUTTER,BUYCAT_LD_RUG,BUYCAT_LD_FIREPLACES,BUYCAT_LD_WALLSCULPTURE,BUYCAT_LD_BATHROOMACCENT,BUYCAT_LD_MISCDECORATION];
+      
+      public static const BUYGROUP_DECORATION_SORT:Array = [BUYCAT_LD_PLANT,BUYCAT_LD_WALLDECORATION,BUYCAT_LD_MIRROR_FREESTANDING,BUYCAT_LD_MIRROR_WALL,BUYCAT_LD_MIRROR,BUYCAT_LD_CURTAINBLIND,BUYCAT_LD_AWNING,BUYCAT_LD_WINDOW_TREATMENT,BUYCAT_LD_SCULPTURE,BUYCAT_LD_CEILINGDECORATION,BUYCAT_LD_CLUTTER,BUYCAT_LD_RUG,BUYCAT_LD_FIREPLACES,BUYCAT_LD_WALLSCULPTURE,BUYCAT_LD_BATHROOMACCENT,BUYCAT_LD_MISCDECORATION];
+      
+      public static const BUYGROUP_MIRRORS_SORT:Array = [BUYCAT_LD_MIRROR_FREESTANDING,BUYCAT_LD_MIRROR_WALL,BUYCAT_LD_MIRROR];
+      
+      public static const BUYGROUP_WINDOW_TREATMENT_SORT:Array = [BUYCAT_LD_CURTAINBLIND,BUYCAT_LD_AWNING,BUYCAT_LD_WINDOW_TREATMENT];
+      
+      public static const BUYGROUP_DECORATION_MISC:Array = [BUYCAT_LD_BATHROOMACCENT,BUYCAT_LD_MISCDECORATION];
+      
+      public static const BUYGROUP_STORAGE:Array = [BUYCAT_SS_BOOKSHELF,BUYCAT_SS_DRESSER,BUYCAT_SS_MISCSTORAGE];
+      
+      public static const BUYGROUP_KIDS:Array = [BUYCAT_LD_KIDDECORATION,BUYCAT_EE_KIDFURNITURE,BUYCAT_EE_KIDTOY,BUYCAT_EE_KIDACTIVITY,BUYCAT_EE_TODDLERS,BUYCAT_EE_MISCKIDS];
+      
+      public static const BUYGROUP_WALL_LIGHTING:Array = [BUYCAT_LD_WALLLIGHT,BUYCAT_LD_FLOORLAMP,BUYCAT_LD_CEILINGLIGHT,BUYCAT_LD_TABLELAMP,BUYCAT_LD_MISCLIGHT];
+      
+      public static const BUYGROUP_LIGHTING:Array = [BUYCAT_LD_TABLELAMP,BUYCAT_LD_FLOORLAMP,BUYCAT_LD_CEILINGLIGHT,BUYCAT_LD_WALLLIGHT,BUYCAT_LD_OUTDOORLIGHT,BUYCAT_LD_MISCLIGHT];
+      
+      public static const BUYGROUP_TABLE_LIGHTING:Array = [BUYCAT_LD_TABLELAMP,BUYCAT_LD_WALLLIGHT,BUYCAT_LD_FLOORLAMP,BUYCAT_LD_CEILINGLIGHT,BUYCAT_LD_MISCLIGHT];
+      
+      public static const BUYGROUP_FLOOR_LIGHTING:Array = [BUYCAT_LD_FLOORLAMP,BUYCAT_LD_CEILINGLIGHT,BUYCAT_LD_TABLELAMP,BUYCAT_LD_WALLLIGHT,BUYCAT_LD_MISCLIGHT];
+      
+      public static const BUYGROUP_CEILING_LIGHTING:Array = [BUYCAT_LD_CEILINGLIGHT,BUYCAT_LD_TABLELAMP,BUYCAT_LD_WALLLIGHT,BUYCAT_LD_FLOORLAMP,BUYCAT_LD_MISCLIGHT];
+      
+      public static const BUYGROUP_SOFAS:Array = [BUYCAT_SS_SOFA,BUYCAT_SS_LOVESEAT];
+      
+      public static const BUYGROUP_DININGCHAIR:Array = [BUYCAT_SS_DININGCHAIR,BUYCAT_SS_DESKCHAIR];
+      
+      public static const BUYGROUP_DESKCHAIR:Array = [BUYCAT_SS_DESKCHAIR,BUYCAT_SS_DININGCHAIR];
+      
+      public static const BUYGROUP_OUTDOOR_ACTIVITIES:Array = [BUYCAT_EE_GARDENING,BUYCAT_EE_OUTDOORACTIVITY];
+      
+      public static const BUYGROUP_PET_OUTDOOR:Array = [BUYCAT_EE_PETTOYS,BUYCAT_PA_PETFOOD,BUYCAT_SS_PETBED,BUYCAT_PA_LITTERBOX,BUYCAT_PA_PETCARE,BUYCAT_SS_SCRATCHINGPOST,BUYCAT_SS_PETFURNITURE];
+      
+      public static const BUYGROUP_PET_BATHROOM:Array = [BUYCAT_PA_LITTERBOX,BUYCAT_PA_PETFOOD,BUYCAT_SS_PETBED,BUYCAT_PA_PETCARE,BUYCAT_SS_SCRATCHINGPOST,BUYCAT_SS_PETFURNITURE,BUYCAT_EE_PETTOYS];
+      
+      public static const BUYGROUP_PET_BEDROOM:Array = [BUYCAT_SS_PETBED,BUYCAT_PA_LITTERBOX,BUYCAT_PA_PETFOOD,BUYCAT_PA_PETCARE,BUYCAT_SS_SCRATCHINGPOST,BUYCAT_SS_PETFURNITURE,BUYCAT_EE_PETTOYS];
+      
+      public static const BUYGROUP_PET_KITCHEN:Array = [BUYCAT_PA_PETFOOD,BUYCAT_SS_PETBED,BUYCAT_PA_LITTERBOX,BUYCAT_PA_PETCARE,BUYCAT_SS_SCRATCHINGPOST,BUYCAT_SS_PETFURNITURE,BUYCAT_EE_PETTOYS];
+      
+      public static const BUYGROUP_PET_LIVINGROOM:Array = [BUYCAT_SS_SCRATCHINGPOST,BUYCAT_PA_PETFOOD,BUYCAT_SS_PETBED,BUYCAT_SS_PETFURNITURE,BUYCAT_PA_LITTERBOX,BUYCAT_PA_PETCARE,BUYCAT_EE_PETTOYS];
+      
+      public static const BUYGROUP_PETCARE_ALL:Array = [BUYCAT_PA_PETFOOD,BUYCAT_SS_PETBED,BUYCAT_PA_LITTERBOX,BUYCAT_PA_PETCARE];
+      
+      public static const BUYGROUP_PETFURNITURE_ALL:Array = [BUYCAT_SS_PETBED,BUYCAT_SS_SCRATCHINGPOST,BUYCAT_SS_PETFURNITURE];
+      
+      public static const BUYGROUP_PET_MISC:Array = [BUYCAT_EE_PETMISC,BUYCAT_EE_PETVET];
+      
+      public static const BUYGROUP_PET_ALL:Array = BUYGROUP_PETCARE_ALL.concat(([BUYCAT_EE_PETTOYS] as Array).concat(BUYGROUP_PETFURNITURE_ALL.concat(BUYGROUP_PET_MISC.concat(BUYCAT_EE_PETTOYS))));
+      
+      public static const BUYGROUP_VENUES:Array = [BUYCAT_COMMUNITY,BUYCAT_VENUE_BAR,BUYCAT_VENUE_CLUB,BUYCAT_VENUE_FORESTPARK,BUYCAT_VENUE_GYM,BUYCAT_VENUE_LIBRARY,BUYCAT_VENUE_LOUNGE,BUYCAT_VENUE_MUSEUM,BUYCAT_VENUE_PARK,BUYCAT_VENUE_RETAIL,BUYCAT_VENUE_DOCTORCLINIC,BUYCAT_VENUE_POLICESTATION,BUYCAT_VENUE_SCIENTISTLAB,BUYCAT_VENUE_RELAXATIONCENTER,BUYCAT_VENUE_RESTAURANT,BUYCAT_VENUE_ARTSCENTER,BUYCAT_VENUE_KARAOKE,BUYCAT_VENUE_STARGARDEN];
+      
+      public static const BUYGROUP_HOLIDAY:Array = [BUYCAT_HOLIDAY_ALL,BUYCAT_HOLIDAY_DECOR_ALL];
+      
+      public static const BUYGROUP_TRANSPORTATION:Array = [BUYCAT_EE_TRANSPORTATION];
+      
+      public static const BUYGROUP_OFFTHEGRID:Array = [BUYCAT_OTG_APPLIANCES,BUYCAT_OTG_CRAFTING,BUYCAT_OTG_LIGHTING,BUYCAT_OTG_MISC,BUYCAT_OTG_OUTDOORACTIVITIES,BUYCAT_OTG_PLUMBING];
+      
+      public static const BUYGROUP_WATERFEATURES:Array = [BUILDTAG_FUNCTION_WATER_STYLES,BUYCAT_FUNCTION_ATTRACTORS,BUYCAT_FUNCTION_FOUNTAIN_DECOR,BUYCAT_FUNCTION_POOL_OBJECTS,BUYCAT_FUNCTION_EMITTERS,BUYCAT_FUNCTION_OPENWATER_OBJECTS];
+      
+      public static const BUYGROUP_SMALL_BUSINESS:Array = [BUYCAT_EE_SMALL_BUSINESS];
+      
+      public static const BUYGROUP_SMALL_BUSINESS_ALL:Array = [BUYCAT_EE_SMALL_BUSINESS,BUYCAT_COMMUNITY];
+      
+      public static const BUYGROUP_FUNCTION_ALL:Array = BUYGROUP_COMFORT.concat(BUYGROUP_SURFACES.concat(BUYGROUP_PLUMBING.concat(BUYGROUP_ENTERTAINMENT.concat(BUYGROUP_DECORATION.concat(BUYGROUP_PET_ALL.concat(BUYGROUP_KIDS.concat(BUYGROUP_LIGHTING.concat(BUYGROUP_ELECTRONICS.concat(BUYGROUP_APPLIANCES.concat(BUYGROUP_TRANSPORTATION.concat(BUYGROUP_STORAGE.concat(BUYGROUP_SMALL_BUSINESS))))))))))));
+      
+      public static const BUYGROUP_FUNCTION_ALL_SORT:Array = BUYGROUP_COMFORT_SORT.concat(BUYGROUP_SURFACES_SORT.concat(BUYGROUP_PLUMBING_SORT.concat(BUYGROUP_ENTERTAINMENT.concat(BUYGROUP_DECORATION_SORT.concat(BUYGROUP_PET_ALL.concat(BUYGROUP_KIDS.concat(BUYGROUP_LIGHTING.concat(BUYGROUP_ELECTRONICS.concat(BUYGROUP_APPLIANCES_SORT.concat(BUYGROUP_TRANSPORTATION.concat(BUYGROUP_STORAGE.concat(BUYGROUP_SMALL_BUSINESS))))))))))));
+      
+      public static const BUILDGROUP_ALL:Array = [BUILDTAG_DOOR,BUILDTAG_DOOR_CURVED,BUILDTAG_DOOR_CURVED_SMALL,BUILDTAG_WINDOW,BUILDTAG_WINDOW_CURVED,BUILDTAG_WINDOW_CURVED_SMALL,BUILDTAG_GATE,BUILDTAG_COLUMN,BUILDTAG_ROOF_ATTACHMENT,BUILDTAG_ROOF,BUILDTAG_FLOOR_PATTERN,BUILDTAG_WALL_PATTERN,BUILDTAG_ROOF_PATTERN,BUILDTAG_FENCE,BUILDTAG_SPANDREL,BUILDTAG_STAIR,BUILDTAG_LADDER,BUILDTAG_RAILING,BUILDTAG_BLOCK,BUILDTAG_FRIEZE,BUILDTAG_ROOF_TRIM,BUILDTAG_FOUNDATION,BUILDTAG_FLOOR_TRIM,BUILDTAG_WALL_ATTACHMENT,BUILDTAG_FLOWER,BUILDTAG_SHRUB,BUILDTAG_TREE,BUILDTAG_ROCK,BUILDTAG_ARCH,BUILDTAG_BLOCK_WALLTOOL,BUILDTAG_BLOCK_FOUNTAIN,BUILDTAG_FOUNTAINTRIM,BUYCAT_LD_FOUNTAINEMITTER,BUILDTAG_BLOCK_POOL,BUILDTAG_HALFWALL,BUILDTAG_HALFWALL_TRIM,BUILDTAG_POOL_TRIM,BUILDTAG_BUILD_WATER_STYLES,BUYCAT_BUILD_POND_ITEMS,BUYCAT_BUILD_FOUNTAIN_DECOR,BUYCAT_BUILD_POOL_OBJECTS,BUYCAT_BUILD_ATTRACTORS,BUILDTAG_BLOCK_PLATFORM_TOOL,BUILDTAG_BLOCK_PLATFORM,BUILDTAG_PLATFORM_TRIM];
+      
+      public static const BUILDGROUP_DOOR_SORT:Array = [BUILDTAG_DOOR_SINGLE,BUILDTAG_DOOR_DOUBLE,BUILDTAG_DOOR,BUILDTAG_DOOR_CURVED,BUILDTAG_DOOR_CURVED_SMALL];
+      
+      public static const BUILDGROUP_GATE_SORT:Array = [BUILDTAG_GATE_SINGLE,BUILDTAG_GATE_DOUBLE,BUILDTAG_GATE];
+      
+      public static const BUILDGROUP_BLOCK_SORT:Array = [BUILDTAG_BLOCK_WALLTOOL,BUILDTAG_BLOCK_PLATFORM_TOOL,BUILDTAG_BLOCK_BASEMENT,BUILDTAG_BLOCK_WITH_WALLS,BUILDTAG_BLOCK_CURVED_WALL,BUILDTAG_BLOCK_PLATFORM,BUILDTAG_BLOCK_NO_WALLS,BUILDTAG_BLOCK_DECK,BUILDTAG_BLOCK_DIAGONAL,BUILDTAG_BLOCK];
+      
+      public static const BUILDGROUP_STAIRS_SORT:Array = [BUILDTAG_STAIR,BUILDTAG_LADDER];
+      
+      public static const BUILDGROUP_ROOF_SORT:Array = [BUILDTAG_ROOF_ORTHOGONAL,BUILDTAG_ROOF_DIAGONAL,BUILDTAG_ROOF];
+      
+      public static const BUILDGROUP_ROOF_ATTACHMENTS_SORT:Array = [BUILDTAG_ROOF_ATTACHMENT_MISC,BUILDTAG_ROOF_CHIMNEY,BUILDTAG_ROOF_ATTACHMENT];
+      
+      public static const BUILDGROUP_OUTDOOR:Array = [BUILDTAG_TREE,BUILDTAG_SHRUB,BUILDTAG_FLOWER,BUILDTAG_ROCK];
+      
+      public static const BUILDGROUP_OUTDOOR_SORT:Array = [BUILDTAG_TREE,BUILDTAG_SHRUB_BUSH,BUILDTAG_SHRUB_CACTUS,BUILDTAG_SHRUB,BUILDTAG_FLOWER_GROUND_COVER,BUILDTAG_FLOWER_BUSH,BUILDTAG_FLOWER_MISC,BUILDTAG_FLOWER,BUILDTAG_ROCK];
+      
+      public static const BUILDGROUP_FLOWERS_SORT:Array = [BUILDTAG_FLOWER_GROUND_COVER,BUILDTAG_FLOWER_BUSH,BUILDTAG_FLOWER_MISC,BUILDTAG_FLOWER];
+      
+      public static const BUILDGROUP_SHRUBS_SORT:Array = [BUILDTAG_SHRUB_BUSH,BUILDTAG_SHRUB_CACTUS,BUILDTAG_SHRUB];
+      
+      public static const BUILDGROUP_TERRAIN_PAINT:Array = [TERRAIN_PAINT_GRASS,TERRAIN_PAINT_STONE,TERRAIN_PAINT_DIRT,TERRAIN_PAINT_ALL,TERRAIN_MANIP_ALL,PONDTOOL_ALL];
+      
+      public static const BUILDGROUP_POOLS_AND_FOUNTAINS:Array = [BUILDTAG_BLOCK_POOL,BUILDTAG_POOL_TRIM,BUILDTAG_BLOCK_FOUNTAIN,BUILDTAG_FOUNTAINTRIM];
+      
+      public static const BUILDGROUP_OUTDOOR_WATER:Array = [BUILDTAG_BUILD_WATER_STYLES,BUYCAT_BUILD_POND_ITEMS,BUYCAT_BUILD_FOUNTAIN_DECOR,BUYCAT_BUILD_POOL_OBJECTS,BUYCAT_BUILD_ATTRACTORS];
+      
+      public static const BUILDGROUP_WALLS:Array = [BUILDTAG_BLOCK,BUILDTAG_BLOCK_WALLTOOL,BUILDTAG_BLOCK_PLATFORM,BUILDTAG_HALFWALL,BUILDTAG_HALFWALL_TRIM,BUILDTAG_PLATFORM_TRIM];
+      
+      public static const BUILDGROUP_WALLPATTERNS:Array = [WALLPATTERN_PAINT,WALLPATTERN_WALLPAPER,WALLPATTERN_TILE,WALLPATTERN_PANELING,WALLPATTERN_MASONRY,WALLPATTERN_ROCKANDSTONE,WALLPATTERN_SIDING,WALLPATTERN_MISC];
+      
+      public static const BUILDGROUP_FLOORPATTERNS:Array = [FLOORPATTERN_WOOD,FLOORPATTERN_CARPET,FLOORPATTERN_TILE,FLOORPATTERN_STONE,FLOORPATTERN_MASONRY,FLOORPATTERN_LINOLEUM,FLOORPATTERN_METAL,FLOORPATTERN_OUTDOOR,FLOORPATTERN_MISC];
+      
+      public static const SEARCHGROUP_OPENSEARCH_SORT:Array = BUYGROUP_FUNCTION_ALL_SORT.concat(BUILDGROUP_OUTDOOR_SORT.concat(BUILDGROUP_OUTDOOR_WATER.concat(BUILDGROUP_POOLS_AND_FOUNTAINS.concat(BUILDGROUP_ROOF_ATTACHMENTS_SORT.concat(BUILDGROUP_GATE_SORT.concat(BUILDGROUP_DOOR_SORT.concat([BUILDTAG_WINDOW,BUILDTAG_WINDOW_CURVED,BUILDTAG_WINDOW_CURVED_SMALL,BUILDTAG_WALL_ATTACHMENT])))))));
+      
+      public static const SEARCHGROUP_IN_FILTERBAR:Array = BUILDGROUP_OUTDOOR.concat(BUILDGROUP_OUTDOOR_WATER.concat(BUILDGROUP_POOLS_AND_FOUNTAINS.concat(BUILDGROUP_TERRAIN_PAINT.concat(BUILDGROUP_WALLS))));
+      
+      public function FilterCategories()
+      {
+         super();
+      }
+   }
+}
+
