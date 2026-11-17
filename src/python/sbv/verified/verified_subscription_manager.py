@@ -4,6 +4,8 @@
 from .verified_billing_service import VerifiedBillingService
 from .verified_eligibility_service import VerifiedEligibilityService
 
+import random
+
 
 class VerifiedSubscriptionManager(object):
     def __init__(
@@ -115,6 +117,20 @@ class VerifiedSubscriptionManager(object):
             "last_failure_reason": "",
             "retry_count": 0,
             "reminder_sent_for": 0,
+            "pending_payout": 0,
+            "total_earnings": 0,
+            "total_bonus_followers": 0,
+            "boost_count": 0,
+            "last_boost_at": 0,
+            "boost_active": False,
+            "boost_started_at": 0,
+            "boost_ends_at": 0,
+            "boost_ticks_done": 0,
+            "boost_total_ticks": 4,
+            "boost_followers_gained": 0,
+            "boost_payout_gained": 0,
+            "boost_reactions_gained": 0,
+            "welcome_bonus_granted_at": 0,
             "payment_history": [],
         }
         self._subscriptions()[sid] = record
@@ -190,6 +206,8 @@ class VerifiedSubscriptionManager(object):
 
         if record is not None:
             changed = self.billing.process_due(record, now)
+            if self.advance_boost_campaign(record, now):
+                changed = True
             if changed:
                 self._touch()
                 self.save()
@@ -206,7 +224,8 @@ class VerifiedSubscriptionManager(object):
             benefits_active = self.billing.benefits_active(record, now)
 
         subscription = self._serialize_subscription(sid, record, status, now, eligibility, can_afford)
-        permissions = self._build_permissions(status, record, eligibility, can_afford, now)
+        perks = self._build_perks_summary(sid, record, benefits_active, now)
+        permissions = self._build_permissions(status, record, eligibility, can_afford, now, perks)
 
         benefits = []
         for item in self.plan.get("benefits", []):
@@ -263,6 +282,7 @@ class VerifiedSubscriptionManager(object):
             },
             "eligibility": eligibility,
             "subscription": subscription,
+            "perks": perks,
             "permissions": permissions,
             "benefits": benefits,
             "notifications": notification_items,
@@ -270,6 +290,88 @@ class VerifiedSubscriptionManager(object):
             "last_successful_payment_label": (
                 self.adapter.format_sim_time(last_payment) if last_payment else ""
             ),
+        }
+
+    def _benefit_cfg(self, key, default):
+        return self.config.get("benefits", {}).get(key, default)
+
+    def _boost_duration_hours(self):
+        return max(1, int(self._benefit_cfg("boost_duration_hours", 4)))
+
+    def _boost_duration_ticks(self):
+        return self.adapter.ticks_from_hours(self._boost_duration_hours())
+
+    def _boost_cooldown_hours(self):
+        return max(1, int(self._benefit_cfg("boost_cooldown_hours", 24)))
+
+    def _boost_cooldown_ticks(self):
+        return self.adapter.ticks_from_hours(self._boost_cooldown_hours())
+
+    def _build_perks_summary(self, sid, record, benefits_active, now):
+        pending = int(record.get("pending_payout", 0) or 0) if record else 0
+        total_earnings = int(record.get("total_earnings", 0) or 0) if record else 0
+        bonus_followers = int(record.get("total_bonus_followers", 0) or 0) if record else 0
+        boost_count = int(record.get("boost_count", 0) or 0) if record else 0
+        last_boost = int(record.get("last_boost_at", 0) or 0) if record else 0
+        boost_active = bool(record.get("boost_active", False)) if record else False
+        duration_hours = self._boost_duration_hours()
+        cooldown_hours = self._boost_cooldown_hours()
+        cooldown = self._boost_cooldown_ticks()
+        next_boost_at = last_boost + cooldown if last_boost > 0 else 0
+        boost_ready = bool(benefits_active and not boost_active and (last_boost <= 0 or now >= next_boost_at))
+
+        boost_ticks_done = int(record.get("boost_ticks_done", 0) or 0) if record else 0
+        boost_total_ticks = max(1, int(record.get("boost_total_ticks", duration_hours) or duration_hours)) if record else duration_hours
+        boost_followers_gained = int(record.get("boost_followers_gained", 0) or 0) if record else 0
+        boost_payout_gained = int(record.get("boost_payout_gained", 0) or 0) if record else 0
+        boost_reactions_gained = int(record.get("boost_reactions_gained", 0) or 0) if record else 0
+        per_hour = max(1, self.adapter.ticks_from_hours(1))
+
+        if boost_active and record is not None:
+            started_at = int(record.get("boost_started_at", now) or now)
+            ends_at = int(record.get("boost_ends_at", started_at + self._boost_duration_ticks()) or now)
+            rem_ticks = max(1, ends_at - now)
+            rem_hours = max(1, int((rem_ticks + per_hour - 1) // per_hour))
+            wave_pct = int(round((boost_ticks_done * 100.0) / float(boost_total_ticks)))
+            elapsed_span = max(1, ends_at - started_at)
+            time_pct = int(round((max(0, now - started_at) * 100.0) / float(elapsed_span)))
+            boost_progress = max(0, min(99, max(wave_pct, time_pct)))
+        else:
+            boost_progress = 0
+
+        if not benefits_active:
+            boost_label = "Subscribe to unlock"
+        elif boost_active:
+            boost_label = "{}% \u00b7 {}h left".format(boost_progress, rem_hours)
+        elif boost_ready:
+            boost_label = "Ready ({}h campaign)".format(duration_hours)
+        else:
+            rem_ticks = max(1, next_boost_at - now)
+            rem_hours = max(1, int((rem_ticks + per_hour - 1) // per_hour))
+            boost_label = "Cooldown: {}h".format(rem_hours)
+
+        mult = float(self._benefit_cfg("follower_growth_multiplier", 2.5))
+        return {
+            "pending_payout": pending,
+            "pending_payout_label": self.billing.format_money(pending),
+            "total_earnings": total_earnings,
+            "total_earnings_label": self.billing.format_money(total_earnings),
+            "total_bonus_followers": bonus_followers,
+            "boost_count": boost_count,
+            "boost_active": boost_active,
+            "boost_progress": boost_progress,
+            "boost_ticks_done": boost_ticks_done,
+            "boost_total_ticks": boost_total_ticks,
+            "boost_followers_gained": boost_followers_gained,
+            "boost_payout_gained": boost_payout_gained,
+            "boost_payout_label": self.billing.format_money(boost_payout_gained),
+            "boost_reactions_gained": boost_reactions_gained,
+            "boost_duration_hours": duration_hours,
+            "boost_cooldown_hours": cooldown_hours,
+            "boost_ready": boost_ready,
+            "boost_cooldown_label": boost_label,
+            "follower_multiplier_label": "{}x".format(int(mult) if float(mult).is_integer() else round(mult, 1)),
+            "current_followers": int(self.adapter.get_followers(sid) or 0),
         }
 
     def _serialize_subscription(self, sid, record, status, now, eligibility, can_afford):
@@ -334,8 +436,12 @@ class VerifiedSubscriptionManager(object):
             "can_afford": bool(can_afford),
         }
 
-    def _build_permissions(self, status, record, eligibility, can_afford, now):
+    def _build_permissions(self, status, record, eligibility, can_afford, now, perks=None):
         period_end = int(record.get("current_period_end", 0) or 0) if record else 0
+        benefits_active = bool(record is not None and self.billing.benefits_active(record, now))
+        pending_payout = int((perks or {}).get("pending_payout", record.get("pending_payout", 0) if record else 0) or 0)
+        boost_ready = bool((perks or {}).get("boost_ready", False))
+        boost_active = bool((perks or {}).get("boost_active", False))
         return {
             "can_subscribe": bool(
                 can_afford
@@ -348,6 +454,8 @@ class VerifiedSubscriptionManager(object):
                 can_afford and status in ("payment_failed", "grace_period", "suspended")
             ),
             "can_toggle_auto_renew": status == "active",
+            "can_boost_post": bool(benefits_active and boost_ready and not boost_active),
+            "can_claim_payout": bool(pending_payout > 0),
         }
 
     def _status_detail(self, status, record, now, eligibility, can_afford=True):
@@ -394,8 +502,12 @@ class VerifiedSubscriptionManager(object):
         self.ensure_loaded()
         now = self.adapter.get_now_ticks()
         record = self.get_record(sim_id)
-        if record is not None and self.billing.process_due(record, now):
-            self.save()
+        if record is not None:
+            changed = self.billing.process_due(record, now)
+            if self.advance_boost_campaign(record, now):
+                changed = True
+            if changed:
+                self.save()
         action = str(action or "").strip().lower()
         if action == "subscribe":
             result = self.subscribe(sim_id)
@@ -407,6 +519,10 @@ class VerifiedSubscriptionManager(object):
             result = self.retry_payment(sim_id)
         elif action == "set_auto_renew":
             result = self.set_auto_renew(sim_id, str(arg1).lower() in ("1", "true", "on", "yes"))
+        elif action == "boost_post":
+            result = self.boost_post(sim_id)
+        elif action == "claim_payout":
+            result = self.claim_payout(sim_id)
         elif action == "refresh":
             result = self.refresh(sim_id)
         else:
@@ -484,12 +600,14 @@ class VerifiedSubscriptionManager(object):
             return self._fail(sid, payment.get("code", "payment_failed"), payment.get("message", "Payment failed."), now)
 
         self.billing.activate(record, now)
+        welcome_bonus = self._grant_welcome_perk(record, sid, now)
         self.notifications.mark_all_read(sid)
+        bonus_note = " (+{} spotlight followers!)".format(welcome_bonus) if welcome_bonus > 0 else ""
         self.notifications.set_last_result(
             sid,
             True,
-            "Social Bunny Verified activated. {} was paid from household funds.".format(
-                self.billing.format_money(self.billing.price)
+            "Social Bunny Verified activated. {} paid{}.".format(
+                self.billing.format_money(self.billing.price), bonus_note
             ),
             "subscribed",
             "success",
@@ -636,21 +754,286 @@ class VerifiedSubscriptionManager(object):
 
         self.billing.apply_new_period(record, now)
         self.billing.append_payment(record, now, self.billing.price, True, "Manual retry")
+        welcome_bonus = self._grant_welcome_perk(record, sid, now)
         self._notifications_push(
             sid,
             "payment_succeeded",
             "Payment received. Social Bunny Verified benefits have been restored.",
             now,
         )
+        bonus_note = " (+{} followers!)".format(welcome_bonus) if welcome_bonus > 0 else ""
         self.notifications.set_last_result(
             sid,
             True,
-            "Payment received. Verified benefits restored.",
+            "Payment received. Verified benefits restored{}.".format(bonus_note),
             "payment_succeeded",
             "success",
             now,
         )
         return {"ok": True, "code": "payment_succeeded", "message": "Payment completed."}
+
+    # --- Active Verified Perks & Gameplay Hooks ----------------------
+
+    def _grant_welcome_perk(self, record, sim_id, now):
+        last_granted = int(record.get("welcome_bonus_granted_at", 0) or 0)
+        interval = max(1, int(self.billing.interval_ticks))
+        if last_granted > 0 and (now - last_granted) < interval:
+            return 0
+        bonus = max(0, int(self._benefit_cfg("welcome_follower_bonus", 75)))
+        if bonus <= 0:
+            return 0
+        self.adapter.add_followers(sim_id, bonus)
+        self.adapter.grant_fame(sim_id, max(0, int(self._benefit_cfg("fame_per_post", 12))))
+        record["total_bonus_followers"] = int(record.get("total_bonus_followers", 0) or 0) + bonus
+        record["welcome_bonus_granted_at"] = int(now)
+        self._notifications_push(
+            sim_id,
+            "spotlight_bonus",
+            "Verified Spotlight granted +{} followers to launch your verified reach.".format(bonus),
+            now,
+        )
+        self._touch()
+        return bonus
+
+    def advance_boost_campaign(self, record, now):
+        if record is None or not record.get("boost_active", False):
+            return False
+
+        sid = str(record.get("sim_id", ""))
+        now = int(now)
+        if not self.billing.benefits_active(record, now):
+            record["boost_active"] = False
+            if int(record.get("last_boost_at", 0) or 0) <= 0:
+                record["last_boost_at"] = now
+            return True
+
+        started = int(record.get("boost_started_at", now) or now)
+        total_waves = max(1, int(record.get("boost_total_ticks", self._boost_duration_hours()) or 4))
+        done_waves = max(0, int(record.get("boost_ticks_done", 0) or 0))
+        per_hour = max(1, self.adapter.ticks_from_hours(1))
+        elapsed_waves = min(total_waves, max(0, int((now - started) // per_hour)))
+
+        if elapsed_waves <= done_waves:
+            return False
+
+        min_f = max(1, int(self._benefit_cfg("boost_follower_min", 45)))
+        max_f = max(min_f, int(self._benefit_cfg("boost_follower_max", 110)))
+        payout_base = max(0, int(self._benefit_cfg("boost_payout_base", 60)))
+        fame_per_post = max(0, int(self._benefit_cfg("fame_per_post", 12)))
+
+        wave_min_f = max(6, min_f // total_waves)
+        wave_max_f = max(wave_min_f + 4, (max_f + total_waves - 1) // total_waves)
+        wave_base_p = max(10, payout_base // total_waves)
+        wave_fame = max(2, fame_per_post // total_waves) + 2
+
+        total_new_followers = 0
+        total_new_payout = 0
+        total_new_reactions = 0
+        for _ in range(elapsed_waves - done_waves):
+            current_followers = max(0, int(self.adapter.get_followers(sid) or 0))
+            wave_f = random.randint(wave_min_f, wave_max_f) + min(25, current_followers // (40 * total_waves))
+            self.adapter.add_followers(sid, wave_f)
+            wave_r = int(self.adapter.simulate_npc_reactions(sid, 1) or 0)
+            wave_p = wave_base_p + min(35, current_followers // (25 * total_waves)) + (wave_r * 8)
+            self.adapter.grant_fame(sid, wave_fame)
+            total_new_followers += wave_f
+            total_new_payout += wave_p
+            total_new_reactions += wave_r
+
+        record["boost_ticks_done"] = elapsed_waves
+        record["boost_followers_gained"] = int(record.get("boost_followers_gained", 0) or 0) + total_new_followers
+        record["boost_payout_gained"] = int(record.get("boost_payout_gained", 0) or 0) + total_new_payout
+        record["boost_reactions_gained"] = int(record.get("boost_reactions_gained", 0) or 0) + total_new_reactions
+        record["total_bonus_followers"] = int(record.get("total_bonus_followers", 0) or 0) + total_new_followers
+        record["pending_payout"] = int(record.get("pending_payout", 0) or 0) + total_new_payout
+        record["total_earnings"] = int(record.get("total_earnings", 0) or 0) + total_new_payout
+
+        if elapsed_waves >= total_waves:
+            end_at = int(record.get("boost_ends_at", now) or now)
+            record["boost_active"] = False
+            record["boost_count"] = int(record.get("boost_count", 0) or 0) + 1
+            record["last_boost_at"] = min(now, end_at) if end_at > 0 else now
+            done_f = int(record.get("boost_followers_gained", 0) or 0)
+            done_p = int(record.get("boost_payout_gained", 0) or 0)
+            done_r = int(record.get("boost_reactions_gained", 0) or 0)
+            msg = "Spotlight Campaign complete! +{} followers, +{} ad revenue{}.".format(
+                done_f,
+                self.billing.format_money(done_p),
+                ", +{} reactions".format(done_r) if done_r > 0 else "",
+            )
+            self._notifications_push(sid, "boost_complete", msg, now)
+
+        return True
+
+    def boost_post(self, sim_id):
+        sid = str(sim_id)
+        now = int(self.adapter.get_now_ticks())
+        record = self.get_record(sid)
+        if record is None or not self.billing.benefits_active(record, now):
+            return self._fail(sid, "not_verified", "Subscribe to Social Bunny Verified to boost reach.", now)
+
+        if self.advance_boost_campaign(record, now):
+            self._touch()
+            self.save()
+
+        if record.get("boost_active", False):
+            summary = self._build_perks_summary(sid, record, True, now)
+            return self._fail(
+                sid,
+                "boost_in_progress",
+                "Spotlight Campaign is already running ({}% complete).".format(summary.get("boost_progress", 0)),
+                now,
+            )
+
+        cooldown = self._boost_cooldown_ticks()
+        last_boost = int(record.get("last_boost_at", 0) or 0)
+        if last_boost > 0 and now < (last_boost + cooldown):
+            rem_ticks = (last_boost + cooldown) - now
+            per_hour = max(1, self.adapter.ticks_from_hours(1))
+            rem_hours = max(1, int((rem_ticks + per_hour - 1) // per_hour))
+            return self._fail(
+                sid,
+                "boost_cooldown",
+                "Creator Spotlight is cooling down. Ready in {} Sim hour(s).".format(rem_hours),
+                now,
+            )
+
+        duration_hours = self._boost_duration_hours()
+        per_hour = max(1, self.adapter.ticks_from_hours(1))
+        record["boost_active"] = True
+        record["boost_started_at"] = int(now)
+        record["boost_ends_at"] = int(now) + (duration_hours * per_hour)
+        record["boost_ticks_done"] = 0
+        record["boost_total_ticks"] = duration_hours
+        record["boost_followers_gained"] = 0
+        record["boost_payout_gained"] = 0
+        record["boost_reactions_gained"] = 0
+        self._touch()
+
+        msg = "Spotlight Campaign launched ({}h). Reach, reactions & ad revenue will arrive in hourly waves.".format(
+            duration_hours
+        )
+        self._notifications_push(sid, "boost_post", msg, now)
+        self.notifications.set_last_result(sid, True, msg, "boost_post", "success", now)
+        return {
+            "ok": True,
+            "code": "boost_post",
+            "message": msg,
+            "boost_active": True,
+            "boost_duration_hours": duration_hours,
+            "boost_progress": 0,
+            "followers_added": 0,
+            "payout_earned": 0,
+            "reactions_added": 0,
+        }
+
+    def claim_payout(self, sim_id):
+        sid = str(sim_id)
+        now = int(self.adapter.get_now_ticks())
+        record = self.get_record(sid)
+        if record is None:
+            return self._fail(sid, "not_subscribed", "No Verified account exists for this Sim.", now)
+        amount = int(record.get("pending_payout", 0) or 0)
+        if amount <= 0:
+            return self._fail(
+                sid,
+                "no_payout_available",
+                "No pending creator payout yet. Post on Social Bunny or use Boost Reach!",
+                now,
+            )
+        if not self.adapter.deposit_household_funds(sid, amount):
+            return self._fail(sid, "household_missing", "Could not deposit Simoleons to household funds.", now)
+
+        record["pending_payout"] = 0
+        self._touch()
+        money_str = self.billing.format_money(amount)
+        msg = "Claimed {} in Verified creator ad revenue to household funds.".format(money_str)
+        self._notifications_push(sid, "payout_claimed", msg, now)
+        self.notifications.set_last_result(sid, True, msg, "payout_claimed", "success", now)
+        return {"ok": True, "code": "payout_claimed", "message": msg, "amount": amount}
+
+    def on_verified_post_created(self, sim_id):
+        sid = str(sim_id)
+        self.ensure_loaded()
+        now = int(self.adapter.get_now_ticks())
+        record = self.get_record(sid)
+        if record is None or not self.billing.benefits_active(record, now):
+            return None
+
+        follower_bonus = max(0, int(self._benefit_cfg("post_follower_bonus", 12)))
+        current_followers = max(0, int(self.adapter.get_followers(sid) or 0))
+        if follower_bonus > 0:
+            self.adapter.add_followers(sid, follower_bonus)
+
+        payout_base = max(0, int(self._benefit_cfg("post_payout_base", 35)))
+        payout = payout_base + min(200, current_followers // 20)
+        self.adapter.grant_fame(sid, max(0, int(self._benefit_cfg("fame_per_post", 12))))
+
+        record["total_bonus_followers"] = int(record.get("total_bonus_followers", 0) or 0) + follower_bonus
+        record["pending_payout"] = int(record.get("pending_payout", 0) or 0) + payout
+        record["total_earnings"] = int(record.get("total_earnings", 0) or 0) + payout
+        self._touch()
+        self.save()
+        return {"followers_added": follower_bonus, "payout_earned": payout}
+
+    def on_verified_post_reaction(self, author_sim_id):
+        sid = str(author_sim_id)
+        self.ensure_loaded()
+        now = int(self.adapter.get_now_ticks())
+        record = self.get_record(sid)
+        if record is None or not self.billing.benefits_active(record, now):
+            return None
+
+        follower_bonus = max(0, int(self._benefit_cfg("reaction_follower_bonus", 3)))
+        payout = max(0, int(self._benefit_cfg("reaction_payout_bonus", 10)))
+        if follower_bonus > 0:
+            self.adapter.add_followers(sid, follower_bonus)
+        record["total_bonus_followers"] = int(record.get("total_bonus_followers", 0) or 0) + follower_bonus
+        record["pending_payout"] = int(record.get("pending_payout", 0) or 0) + payout
+        record["total_earnings"] = int(record.get("total_earnings", 0) or 0) + payout
+        self._touch()
+        return {"followers_added": follower_bonus, "payout_earned": payout}
+
+    def on_verified_follower_recount(self, sim_id, native_delta):
+        sid = str(sim_id)
+        self.ensure_loaded()
+        now = int(self.adapter.get_now_ticks())
+        record = self.get_record(sid)
+        if record is None or not self.billing.benefits_active(record, now):
+            return 0
+
+        mult = max(1.0, float(self._benefit_cfg("follower_growth_multiplier", 2.5)))
+        min_gain = max(0, int(self._benefit_cfg("min_daily_follower_gain", 20)))
+        native_delta = int(native_delta)
+        if native_delta > 0:
+            extra = int(round(native_delta * (mult - 1.0)))
+        else:
+            # Recover any net loss plus guarantee active algorithm growth.
+            extra = abs(native_delta) + min_gain
+        if extra > 0:
+            self.adapter.add_followers(sid, extra)
+            record["total_bonus_followers"] = int(record.get("total_bonus_followers", 0) or 0) + extra
+            self._notifications_push(
+                sid,
+                "algorithm_growth",
+                "Verified Algorithm added +{} bonus followers in today's reach recount.".format(extra),
+                now,
+            )
+            self._touch()
+            self.save()
+        return extra
+
+    def on_verified_friend_added(self, sim_id, target_sim_id):
+        sid = str(sim_id)
+        self.ensure_loaded()
+        now = int(self.adapter.get_now_ticks())
+        record = self.get_record(sid)
+        if record is None or not self.billing.benefits_active(record, now):
+            return False
+        bonus = float(self._benefit_cfg("friendship_bonus_on_add", 8.0))
+        if bonus <= 0:
+            return False
+        return self.adapter.add_friendship(sid, target_sim_id, bonus)
 
     def _fail(self, sim_id, code, message, now):
         self.notifications.set_last_result(sim_id, False, message, code, "error", now)
@@ -671,6 +1054,8 @@ class VerifiedSubscriptionManager(object):
                 continue
             try:
                 if self.billing.process_due(record, now):
+                    changed += 1
+                if self.advance_boost_campaign(record, now):
                     changed += 1
             except Exception:
                 continue

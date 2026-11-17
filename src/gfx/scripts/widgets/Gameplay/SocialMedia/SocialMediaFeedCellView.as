@@ -82,16 +82,16 @@ package widgets.Gameplay.SocialMedia
          this.mSocialMediaData = param1 as SocialMediaFeedItem;
          var _loc3_:uint = uint(this.mSocialMediaData.post_time);
          this.mMinutesSincePost = SocialMediaMain.GetMinutesSincePostTime(_loc3_);
-         this.RefreshLayout();
+         this.RefreshLayout(true);
       }
       
       override public function SetState(param1:String) : void
       {
          super.SetState(param1);
-         this.RefreshLayout();
+         this.RefreshLayout(false);
       }
       
-      protected function RefreshLayout() : void
+      protected function RefreshLayout(param1:Boolean = true) : void
       {
          var _loc2_:Object = null;
          if(this.mSocialMediaData == null)
@@ -142,8 +142,11 @@ package widgets.Gameplay.SocialMedia
             if(this.mSocialMediaData.reactions.length > 0)
             {
                this.mcReactionsGrid.visible = true;
-               this.mFeedData.RemoveAllItems();
-               this.mFeedData.AddItemsFromIterable(this.mSocialMediaData.reactions);
+               if(param1 || this.mFeedData.length != this.mSocialMediaData.reactions.length)
+               {
+                  this.mFeedData.RemoveAllItems();
+                  this.mFeedData.AddItemsFromIterable(this.mSocialMediaData.reactions);
+               }
             }
          }
          InputModeVisibilityExtension.ShowForController(this.mcControllerConfirmAction);

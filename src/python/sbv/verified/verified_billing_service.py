@@ -109,10 +109,33 @@ class VerifiedBillingService(object):
         except Exception:
             pass
 
+        # Real TS4 _Funds.try_remove returns a bool (True/False), whereas
+        # _Funds.try_remove_amount returns the deducted int (or None). Handle both.
+        if hasattr(funds, "try_remove_amount"):
+            try:
+                removed_amount = funds.try_remove_amount(amount, _money_reason(), None, True)
+            except Exception:
+                removed_amount = None
+            if removed_amount is None or int(removed_amount) < amount:
+                return {
+                    "ok": False,
+                    "code": "payment_failed",
+                    "message": "The full subscription amount could not be deducted.",
+                }
+            return {"ok": True, "code": "paid", "message": "Payment completed."}
+
         try:
             removed = funds.try_remove(amount, _money_reason(), None, True)
         except Exception:
             removed = None
+        if isinstance(removed, bool):
+            if not removed:
+                return {
+                    "ok": False,
+                    "code": "payment_failed",
+                    "message": "The household could not complete the Simoleon payment.",
+                }
+            return {"ok": True, "code": "paid", "message": "Payment completed."}
         if removed is None:
             return {
                 "ok": False,

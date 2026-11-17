@@ -17,7 +17,9 @@ package widgets.Gameplay.SocialMedia
    import olympus.controls.IconComponent;
    import olympus.events.GenericEvent;
    import olympus.events.PushButtonEvent;
+   import olympus.events.ScrollerEvent;
    import olympus.events.SelectableGroupEvent;
+   import olympus.events.SmoothSliderEvent;
    import olympus.extensions.InputModeVisibilityExtension;
    import olympus.extensions.MouseKeyboardVisibilityExtension;
    import olympus.gamepad.EnterParams;
@@ -25,6 +27,7 @@ package widgets.Gameplay.SocialMedia
    import olympus.gamepad.NavManager;
    import olympus.gui.buttons.Button;
    import olympus.gui.buttons.TextButton;
+   import olympus.gui.sliders.Slider;
    import olympus.input.IInputFocusable;
    import olympus.input.InputAction;
    import olympus.input.adapters.BidirectionalGroupAdapter;
@@ -36,6 +39,7 @@ package widgets.Gameplay.SocialMedia
    import olympus.utils.ImageUtils;
    import olympus.utils.SystemUtils;
    import olympus.utils.TextUtils;
+   import widgets.Gameplay.constants.SocialMediaTunables;
    import widgets.shared.controls.Console.LegendIcon;
    
    [Embed(source="/_assets/assets.swf", symbol="symbol100")]
@@ -51,6 +55,18 @@ package widgets.Gameplay.SocialMedia
       public static const PANEL_MODE_VERIFIED:int = 3;
       
       protected static const PANEL_HEIGHT:Number = 316;
+      
+      protected static const VERIFIED_PANEL_HEIGHT:Number = SocialMediaTunables.FEED_TAB_PANEL_HEIGHT;
+      
+      protected static const VERIFIED_CARD_X:Number = 7;
+      
+      protected static const VERIFIED_CARD_W:Number = 492;
+      
+      protected static const VERIFIED_BTN_W:Number = 138;
+      
+      protected static const VERIFIED_BTN_GAP:Number = 18;
+      
+      protected static const VERIFIED_BTN_LEFT_OVERHANG:Number = 20;
       
       public var mcBackground:MovieClip;
       
@@ -111,6 +127,8 @@ package widgets.Gameplay.SocialMedia
       protected var mVerifiedContentH:Number = 0;
       
       protected var mbVerifiedConfirming:Boolean = false;
+      
+      protected var mbVerifiedListDetached:Boolean = false;
       
       protected var mJsonStr:String = "";
       
@@ -269,27 +287,36 @@ package widgets.Gameplay.SocialMedia
       // Additive Verified tab implementation
       // =================================================================
 
+      protected function GetVerifiedViewportHeight() : Number
+      {
+         if(this.mcVerifiedPanel != null && this.mcVerifiedPanel.mcList != null && this.mcVerifiedPanel.mcList.height > 0)
+         {
+            return Math.max(200,this.mcVerifiedPanel.mcList.height - SocialMediaTunables.FEED_SCROLLBAR_PADDING.Vertical);
+         }
+         return VERIFIED_PANEL_HEIGHT - SocialMediaTunables.FEED_TAB_PANEL_MARGINS.Vertical - SocialMediaTunables.FEED_SCROLLBAR_PADDING.Vertical;
+      }
+
       protected function InitVerifiedChrome() : void
       {
          if(this.mcVerifiedPanel == null || this.mVerifiedCanvas != null)
          {
             return;
          }
-         this.mcVerifiedPanel.mcList.visible = false;
          this.mcVerifiedPanel.txtEmptyStateTitle.visible = false;
          this.mcVerifiedPanel.txtEmptyStateDescription.visible = false;
          this.mcVerifiedPanel.mcFeedPanelFTUE.visible = false;
          this.mcVerifiedPanel.mcBackground.visible = true;
 
          this.mVerifiedMask = new Sprite();
+         this.mVerifiedMask.visible = false;
          this.mVerifiedMask.mouseEnabled = false;
          this.mcVerifiedPanel.addChild(this.mVerifiedMask);
 
          this.mVerifiedCanvas = new Sprite();
-         this.mVerifiedCanvas.mask = this.mVerifiedMask;
          this.mcVerifiedPanel.addChild(this.mVerifiedCanvas);
 
          this.mVerifiedScrollbar = new Sprite();
+         this.mVerifiedScrollbar.visible = false;
          this.mVerifiedScrollbar.mouseEnabled = false;
          this.mcVerifiedPanel.addChild(this.mVerifiedScrollbar);
 
@@ -297,8 +324,130 @@ package widgets.Gameplay.SocialMedia
          this.mVerifiedOverlay.visible = false;
          this.mcVerifiedPanel.addChild(this.mVerifiedOverlay);
 
+         this.ConfigureVerifiedNativeSlider();
+
          this.mcVerifiedPanel.addEventListener(MouseEvent.MOUSE_WHEEL,this.OnVerifiedMouseWheel,false,0,true);
          this.ResizeVerifiedChrome();
+      }
+
+      protected function ConfigureVerifiedNativeSlider() : void
+      {
+         if(this.mcVerifiedPanel == null || this.mcVerifiedPanel.mcList == null)
+         {
+            return;
+         }
+         var list:* = this.mcVerifiedPanel.mcList;
+         list.visible = true;
+         list.mouseEnabled = false;
+         list.ScrollerAmount = 28;
+         if(list.mcBackground != null)
+         {
+            list.mcBackground.visible = false;
+            list.mcBackground.mouseEnabled = false;
+         }
+         if(list.mSlider != null)
+         {
+            list.mSlider.AlwaysVisible = false;
+         }
+         if(list.mGridLayout != null && !this.mbVerifiedListDetached)
+         {
+            // Detach only after InitializeScrollList created mGridLayout so
+            // GridView / empty ArrayDataFeed events never reset mSlider to 0.
+            try
+            {
+               list.RemoveDataFeed();
+               list.Reset();
+            }
+            catch(detachError:Error)
+            {
+            }
+            this.mbVerifiedListDetached = true;
+         }
+         if(list.mScrollerView != null)
+         {
+            var sv:* = list.mScrollerView;
+            sv.visible = true;
+            sv.mouseEnabled = false;
+            sv.mouseChildren = true;
+            if(sv.mcBackground != null)
+            {
+               sv.mcBackground.visible = true;
+               sv.mcBackground.alpha = 0;
+               sv.mcBackground.mouseEnabled = true;
+            }
+            var gridDisp:DisplayObject = sv.mScrollableContent as DisplayObject;
+            if(gridDisp != null)
+            {
+               gridDisp.visible = false;
+               gridDisp.mask = null;
+            }
+            if(this.mVerifiedCanvas != null && sv.mcMask != null)
+            {
+               sv.mcMask.visible = true;
+               if(this.mVerifiedCanvas.parent != sv)
+               {
+                  sv.addChild(this.mVerifiedCanvas);
+               }
+               this.mVerifiedCanvas.x = 0;
+               this.mVerifiedCanvas.mask = sv.mcMask;
+               if(this.mVerifiedMask != null)
+               {
+                  this.mVerifiedMask.visible = false;
+                  this.mVerifiedMask.graphics.clear();
+               }
+            }
+         }
+         if(this.mVerifiedOverlay != null && this.mVerifiedOverlay.parent == this.mcVerifiedPanel)
+         {
+            this.mcVerifiedPanel.setChildIndex(this.mVerifiedOverlay,this.mcVerifiedPanel.numChildren - 1);
+         }
+         if(list.mSlider != null)
+         {
+            list.mSlider.removeEventListener(SmoothSliderEvent.SNAP,this.OnVerifiedSliderChanged);
+            list.mSlider.removeEventListener(SmoothSliderEvent.SLIDE,this.OnVerifiedSliderChanged);
+            list.mSlider.removeEventListener(SmoothSliderEvent.DRAG_CONTINUE,this.OnVerifiedSliderChanged);
+            list.mSlider.addEventListener(SmoothSliderEvent.SNAP,this.OnVerifiedSliderChanged);
+            list.mSlider.addEventListener(SmoothSliderEvent.SLIDE,this.OnVerifiedSliderChanged);
+            list.mSlider.addEventListener(SmoothSliderEvent.DRAG_CONTINUE,this.OnVerifiedSliderChanged);
+         }
+         this.mcVerifiedPanel.removeEventListener(Event.ENTER_FRAME,this.OnVerifiedEnterFrame);
+         this.mcVerifiedPanel.addEventListener(Event.ENTER_FRAME,this.OnVerifiedEnterFrame);
+      }
+
+      protected function SyncVerifiedScrollFromSlider() : void
+      {
+         if(this.mcVerifiedPanel == null || this.mVerifiedCanvas == null || this.mcVerifiedPanel.mcList == null)
+         {
+            return;
+         }
+         var slider:Slider = this.mcVerifiedPanel.mcList.mSlider;
+         if(slider == null)
+         {
+            return;
+         }
+         var viewH:Number = this.GetVerifiedViewportHeight();
+         var maxScroll:Number = Math.max(0,Math.round(this.mVerifiedContentH - viewH));
+         var clamped:Number = Math.round(Math.max(0,Math.min(maxScroll,slider.Value)));
+         var targetY:Number = -clamped;
+         if(this.mVerifiedScrollY != clamped || Math.round(this.mVerifiedCanvas.y) != targetY)
+         {
+            this.mVerifiedScrollY = clamped;
+            this.mVerifiedCanvas.y = targetY;
+         }
+      }
+
+      protected function OnVerifiedSliderChanged(event:SmoothSliderEvent) : void
+      {
+         this.SyncVerifiedScrollFromSlider();
+      }
+
+      protected function OnVerifiedEnterFrame(event:Event) : void
+      {
+         if(this.mcVerifiedPanel == null || !this.mcVerifiedPanel.visible || this.mCurrentPanel != this.mcVerifiedPanel)
+         {
+            return;
+         }
+         this.SyncVerifiedScrollFromSlider();
       }
 
       protected function EnsureVerifiedChrome() : void
@@ -308,7 +457,7 @@ package widgets.Gameplay.SocialMedia
             return;
          }
          this.InitVerifiedChrome();
-         this.mcVerifiedPanel.mcList.visible = false;
+         this.ConfigureVerifiedNativeSlider();
          this.mcVerifiedPanel.txtEmptyStateTitle.visible = false;
          this.mcVerifiedPanel.txtEmptyStateDescription.visible = false;
          this.mcVerifiedPanel.mcFeedPanelFTUE.visible = false;
@@ -317,56 +466,63 @@ package widgets.Gameplay.SocialMedia
 
       protected function ResizeVerifiedChrome() : void
       {
-         if(this.mcVerifiedPanel == null || this.mVerifiedMask == null)
+         if(this.mcVerifiedPanel == null)
          {
             return;
          }
          var w:Number = this.mcVerifiedPanel.mcBackground.width;
-         var h:Number = PANEL_HEIGHT;
-         this.mVerifiedMask.graphics.clear();
-         this.mVerifiedMask.graphics.beginFill(0xFFFFFF,1.0);
-         this.mVerifiedMask.graphics.drawRect(0,0,w,h);
-         this.mVerifiedMask.graphics.endFill();
-         this.mVerifiedCanvas.mask = this.mVerifiedMask;
+         this.mcVerifiedPanel.mcBackground.height = VERIFIED_PANEL_HEIGHT;
+         if(this.mcVerifiedPanel.mcList != null)
+         {
+            this.mcVerifiedPanel.mcList.width = w - SocialMediaTunables.FEED_TAB_PANEL_MARGINS.Horizontal;
+            this.mcVerifiedPanel.mcList.height = VERIFIED_PANEL_HEIGHT - SocialMediaTunables.FEED_TAB_PANEL_MARGINS.Vertical;
+         }
          this.RenderVerifiedTab();
       }
 
       protected function OnVerifiedMouseWheel(event:MouseEvent) : void
       {
-         if(this.mbVerifiedConfirming || this.mVerifiedCanvas == null)
+         if(this.mbVerifiedConfirming || this.mVerifiedCanvas == null || this.mcVerifiedPanel == null)
          {
             return;
          }
-         var maxScroll:Number = Math.max(0,this.mVerifiedContentH - PANEL_HEIGHT);
-         this.mVerifiedScrollY = Math.max(0,Math.min(maxScroll,this.mVerifiedScrollY - event.delta * 28));
-         this.mVerifiedCanvas.y = -this.mVerifiedScrollY;
-         this.DrawVerifiedScrollbar();
+         if(this.mcVerifiedPanel.mcList != null && event.target is DisplayObject && this.mcVerifiedPanel.mcList.contains(event.target as DisplayObject))
+         {
+            return;
+         }
+         var viewH:Number = this.GetVerifiedViewportHeight();
+         var maxScroll:Number = Math.max(0,Math.round(this.mVerifiedContentH - viewH));
+         var delta:Number = -event.delta * 28;
+         var slider:Slider = this.mcVerifiedPanel.mcList != null ? this.mcVerifiedPanel.mcList.mSlider : null;
+         if(slider != null && maxScroll > 0)
+         {
+            slider.SetCurrentValue(delta,false,false,true);
+         }
+         else
+         {
+            this.mVerifiedScrollY = Math.round(Math.max(0,Math.min(maxScroll,this.mVerifiedScrollY + delta)));
+            this.mVerifiedCanvas.y = -this.mVerifiedScrollY;
+         }
       }
 
       protected function DrawVerifiedScrollbar() : void
       {
-         if(this.mVerifiedScrollbar == null)
+         if(this.mcVerifiedPanel == null || this.mcVerifiedPanel.mcList == null || this.mcVerifiedPanel.mcList.mSlider == null)
          {
             return;
          }
-         this.mVerifiedScrollbar.graphics.clear();
-         if(this.mVerifiedContentH <= PANEL_HEIGHT)
+         var slider:Slider = this.mcVerifiedPanel.mcList.mSlider;
+         var viewH:Number = this.GetVerifiedViewportHeight();
+         var maxScroll:Number = Math.max(0,Math.round(this.mVerifiedContentH - viewH));
+         slider.AlwaysVisible = false;
+         slider.SetThumbSize(this.mVerifiedContentH <= 0 ? 1 : Math.min(1,viewH / this.mVerifiedContentH));
+         slider.SetValueRange(0,maxScroll);
+         this.mVerifiedScrollY = Math.round(Math.max(0,Math.min(maxScroll,this.mVerifiedScrollY)));
+         slider.SetCurrentValue(this.mVerifiedScrollY,false,true,false);
+         if(this.mVerifiedCanvas != null)
          {
-            return;
+            this.mVerifiedCanvas.y = -this.mVerifiedScrollY;
          }
-         var w:Number = this.mcVerifiedPanel.mcBackground.width;
-         var trackY:Number = 8;
-         var trackH:Number = PANEL_HEIGHT - 16;
-         var trackX:Number = w - 8;
-         this.mVerifiedScrollbar.graphics.beginFill(0x000000,0.12);
-         this.mVerifiedScrollbar.graphics.drawRoundRect(trackX,trackY,5,trackH,3,3);
-         this.mVerifiedScrollbar.graphics.endFill();
-         var maxScroll:Number = Math.max(1,this.mVerifiedContentH - PANEL_HEIGHT);
-         var thumbH:Number = Math.max(24,(PANEL_HEIGHT / this.mVerifiedContentH) * trackH);
-         var thumbY:Number = trackY + (this.mVerifiedScrollY / maxScroll) * (trackH - thumbH);
-         this.mVerifiedScrollbar.graphics.beginFill(0x5A2B6B,0.55);
-         this.mVerifiedScrollbar.graphics.drawRoundRect(trackX,thumbY,5,thumbH,3,3);
-         this.mVerifiedScrollbar.graphics.endFill();
       }
 
       protected function RenderVerifiedTab() : void
@@ -380,14 +536,14 @@ package widgets.Gameplay.SocialMedia
          {
             this.mVerifiedCanvas.removeChildAt(0);
          }
-         this.mVerifiedContentH = PANEL_HEIGHT;
-         this.mVerifiedScrollY = 0;
-         this.mVerifiedCanvas.y = 0;
-         this.mVerifiedScrollbar.graphics.clear();
+         var viewH:Number = this.GetVerifiedViewportHeight();
+         this.mVerifiedContentH = viewH;
+         this.mVerifiedCanvas.y = -this.mVerifiedScrollY;
 
          if(this.mVerifiedState == null)
          {
             this.DrawVerifiedLoading();
+            this.DrawVerifiedScrollbar();
             return;
          }
 
@@ -399,21 +555,25 @@ package widgets.Gameplay.SocialMedia
          var statusLabel:String = String(sub.status_label != null ? sub.status_label : "Not Subscribed");
          var statusDetail:String = String(sub.status_detail != null ? sub.status_detail : "");
 
-         var y:Number = 12;
-         this.AddVerifiedCard(20,y,503,122,0x5A2B6B,0,12);
-         this.AddVerifiedLabel("Social Bunny Verified",18,0xFFFFFF,true,36,y + 14,330,26);
+         var cardX:Number = VERIFIED_CARD_X;
+         var cardW:Number = VERIFIED_CARD_W;
+         var innerX:Number = cardX + 16;
+
+         var y:Number = 4;
+         this.AddVerifiedCard(cardX,y,cardW,136,0x5A2B6B,0,12);
+         this.AddVerifiedLabel("Social Bunny Verified",18,0xFFFFFF,true,innerX,y + 14,320,26);
          var tagline:String = String(plan.tagline != null ? plan.tagline : "Get recognized with an official verification badge and unlock exclusive account benefits.");
-         this.AddVerifiedLabel(tagline,10,0xEBDDF1,false,36,y + 42,330,40,true);
+         this.AddVerifiedLabel(tagline,12,0xEBDDF1,false,innerX,y + 42,324,48,true);
          var badge:Sprite = this.CreateVerifiedBadge(50);
-         badge.x = 440;
-         badge.y = y + 16;
+         badge.x = cardX + cardW - 66;
+         badge.y = y + 18;
          this.mVerifiedCanvas.addChild(badge);
          var priceLabel:String = String(plan.price_label != null ? plan.price_label : "\u00A7?");
          var intervalLabel:String = String(plan.billing_interval_label != null ? plan.billing_interval_label : "per Sim week");
-         this.AddVerifiedLabel(priceLabel + " " + intervalLabel,13,0xFFFFFF,true,36,y + 88,300,22);
-         this.DrawVerifiedStatusPill(statusLabel,352,y + 86,150,24,this.VerifiedStatusColor(status));
+         this.AddVerifiedLabel(priceLabel + " " + intervalLabel,14,0xFFFFFF,true,innerX,y + 98,284,24);
+         this.DrawVerifiedStatusPill(statusLabel,cardX + cardW - 172,y + 96,156,26,this.VerifiedStatusColor(status));
 
-         y += 134;
+         y += 148;
 
          var result:Object = this.mVerifiedState.last_result;
          if(result != null && result.message != null && String(result.message) != "")
@@ -422,21 +582,21 @@ package widgets.Gameplay.SocialMedia
             var bannerColor:uint = ok ? 0xE7F5EA : 0xFBE9E9;
             var bannerBorder:uint = ok ? 0x9ED3A8 : 0xE6B4B4;
             var textColor:uint = ok ? 0x2E7D32 : 0xB3261E;
-            this.AddVerifiedCard(20,y,503,46,bannerColor,bannerBorder,8);
-            this.AddVerifiedLabel(String(result.message),10,textColor,false,34,y + 10,475,28,true);
-            y += 54;
+            this.AddVerifiedCard(cardX,y,cardW,56,bannerColor,bannerBorder,8);
+            this.AddVerifiedLabel(String(result.message),12,textColor,false,cardX + 14,y + 10,cardW - 28,38,true);
+            y += 66;
          }
 
-         this.AddVerifiedCard(20,y,503,94,0xFFFFFF,0xDCCFE3,10);
-         this.AddVerifiedLabel("Subscription status",10,0x6F5B79,true,36,y + 10,200,16);
-         this.AddVerifiedLabel(statusLabel,16,this.VerifiedStatusColor(status),true,36,y + 26,250,22);
+         this.AddVerifiedCard(cardX,y,cardW,114,0xFFFFFF,0xDCCFE3,10);
+         this.AddVerifiedLabel("Subscription status",12,0x6F5B79,true,innerX,y + 10,200,18);
+         this.AddVerifiedLabel(statusLabel,16,this.VerifiedStatusColor(status),true,innerX,y + 30,260,24);
          if(statusDetail == "")
          {
             statusDetail = eligibility.reason != null ? String(eligibility.reason) : "";
          }
-         this.AddVerifiedLabel(statusDetail,10,0x241A2B,false,36,y + 50,290,40,true);
+         this.AddVerifiedLabel(statusDetail,12,0x241A2B,false,innerX,y + 58,274,48,true);
 
-         var rightX:Number = 334;
+         var rightX:Number = cardX + 304;
          var nextBillingHeading:String = "Next billing";
          if(status == "cancelled" || (status == "active" && sub.auto_renew !== true))
          {
@@ -446,38 +606,93 @@ package widgets.Gameplay.SocialMedia
          {
             nextBillingHeading = "Grace ends";
          }
-         this.AddVerifiedLabel(nextBillingHeading,10,0x6F5B79,true,rightX,y + 10,180,16);
+         this.AddVerifiedLabel(nextBillingHeading,12,0x6F5B79,true,rightX,y + 10,174,18);
          var nextBilling:String = String(sub.next_billing_label != null ? sub.next_billing_label : "\u2014");
-         this.AddVerifiedLabel(nextBilling,10,0x241A2B,true,rightX,y + 26,180,32,true);
+         this.AddVerifiedLabel(nextBilling,12,0x241A2B,true,rightX,y + 32,174,38,true);
          var renewLabel:String = String(sub.auto_renew_label != null ? sub.auto_renew_label : (sub.auto_renew ? "Auto-renew: On" : "Auto-renew: Off"));
-         this.AddVerifiedLabel(renewLabel,10,0x6F5B79,false,rightX,y + 62,180,18);
+         this.AddVerifiedLabel(renewLabel,12,0x6F5B79,false,rightX,y + 76,174,22);
 
-         y += 106;
+         y += 126;
+
+         var perks:Object = this.mVerifiedState.perks != null ? this.mVerifiedState.perks : new Object();
+         var pendingLabel:String = String(perks.pending_payout_label != null ? perks.pending_payout_label : "\u00A70");
+         var totalEarningsLabel:String = String(perks.total_earnings_label != null ? perks.total_earnings_label : "\u00A70");
+         var bonusFollowers:int = int(perks.total_bonus_followers != null ? perks.total_bonus_followers : 0);
+         var multLabel:String = String(perks.follower_multiplier_label != null ? perks.follower_multiplier_label : "2.5x");
+         var boostLabel:String = String(perks.boost_cooldown_label != null ? perks.boost_cooldown_label : (sub.benefits_active === true ? "Ready (4h campaign)" : "Subscribe to unlock"));
+         var pendingVal:int = int(perks.pending_payout != null ? perks.pending_payout : 0);
+         var boostActive:Boolean = perks.boost_active === true;
+         var boostProgress:int = int(perks.boost_progress != null ? perks.boost_progress : 0);
+         var boostFlw:int = int(perks.boost_followers_gained != null ? perks.boost_followers_gained : 0);
+         var boostPayLabel:String = String(perks.boost_payout_label != null ? perks.boost_payout_label : "\u00A70");
+         var perksCardH:Number = boostActive ? 132 : 112;
+
+         this.AddVerifiedCard(cardX,y,cardW,perksCardH,0xFFFFFF,0xDCCFE3,10);
+         this.AddVerifiedLabel("Creator perks & earnings",14,0x241A2B,true,innerX,y + 10,280,22);
+         this.AddVerifiedLabel("Algorithm: " + multLabel + " growth",12,0x5A2B6B,true,rightX,y + 12,174,20);
+         this.AddVerifiedLabel("Pending payout",12,0x6F5B79,false,innerX,y + 38,140,18);
+         this.AddVerifiedLabel(pendingLabel,14,pendingVal > 0 ? 0x2E7D32 : 0x241A2B,true,innerX,y + 56,140,22);
+         this.AddVerifiedLabel("Total earned",12,0x6F5B79,false,innerX + 148,y + 38,136,18);
+         this.AddVerifiedLabel(totalEarningsLabel,14,0x241A2B,true,innerX + 148,y + 56,136,22);
+         this.AddVerifiedLabel("Bonus reach",12,0x6F5B79,false,rightX,y + 38,174,18);
+         this.AddVerifiedLabel("+" + String(bonusFollowers) + " followers",14,0x1D9BF0,true,rightX,y + 56,174,22);
+         if(boostActive)
+         {
+            this.AddVerifiedLabel("Campaign: " + boostLabel,12,0x1D9BF0,true,innerX,y + 84,230,20);
+            this.AddVerifiedLabel("+" + String(boostFlw) + " flw \u00B7 +" + boostPayLabel,12,0x2E7D32,true,innerX + 236,y + 84,220,20);
+            var barW:Number = cardW - 36;
+            var pct:Number = Math.max(0,Math.min(100,boostProgress));
+            var fillW:Number = Math.round(barW * pct / 100);
+            this.mVerifiedCanvas.graphics.beginFill(0xECE6F2,1);
+            this.mVerifiedCanvas.graphics.drawRoundRect(innerX,y + 108,barW,10,5,5);
+            this.mVerifiedCanvas.graphics.endFill();
+            if(fillW > 0)
+            {
+               this.mVerifiedCanvas.graphics.beginFill(0x1D9BF0,1);
+               this.mVerifiedCanvas.graphics.drawRoundRect(innerX,y + 108,Math.max(8,fillW),10,5,5);
+               this.mVerifiedCanvas.graphics.endFill();
+            }
+         }
+         else
+         {
+            this.AddVerifiedLabel("Spotlight Boost: " + boostLabel,12,perks.boost_ready === true ? 0x2E7D32 : 0x6F5B79,true,innerX,y + 84,450,20);
+         }
+
+         y += perksCardH + 12;
 
          var benefits:Array = this.mVerifiedState.benefits != null ? this.mVerifiedState.benefits : (plan.benefits != null ? plan.benefits : new Array());
          var rows:int = Math.ceil(benefits.length / 2);
-         var benefitsH:Number = 34 + rows * 48;
-         this.AddVerifiedCard(20,y,503,benefitsH,0xFFFFFF,0xDCCFE3,10);
-         this.AddVerifiedLabel("Your Verified benefits",13,0x241A2B,true,36,y + 10,300,20);
+         var benefitRowH:Number = 62;
+         var benefitsH:Number = 42 + rows * benefitRowH;
+         this.AddVerifiedCard(cardX,y,cardW,benefitsH,0xFFFFFF,0xDCCFE3,10);
+         this.AddVerifiedLabel("Your Verified benefits",14,0x241A2B,true,innerX,y + 10,300,22);
          var bi:int = 0;
          while(bi < benefits.length)
          {
             var benefit:Object = benefits[bi];
             var col:int = bi % 2;
             var row:int = int(bi / 2);
-            var bx:Number = 36 + col * 238;
-            var by:Number = y + 32 + row * 48;
+            var bx:Number = innerX + col * 234;
+            var by:Number = y + 38 + row * benefitRowH;
             var check:Sprite = this.CreateVerifiedBadge(14);
             check.x = bx;
-            check.y = by + 2;
+            check.y = by + 3;
             this.mVerifiedCanvas.addChild(check);
-            this.AddVerifiedLabel(String(benefit.title != null ? benefit.title : "Verified benefit"),10,0x241A2B,true,bx + 22,by - 2,210,16);
-            this.AddVerifiedLabel(String(benefit.description != null ? benefit.description : ""),9,0x6F5B79,false,bx + 22,by + 14,210,30,true);
+            this.AddVerifiedLabel(String(benefit.title != null ? benefit.title : "Verified benefit"),12,0x241A2B,true,bx + 22,by - 1,202,20);
+            this.AddVerifiedLabel(String(benefit.description != null ? benefit.description : ""),12,0x6F5B79,false,bx + 22,by + 19,202,40,true);
             bi++;
          }
          y += benefitsH + 12;
 
          var actions:Array = new Array();
+         if(perms.can_boost_post === true)
+         {
+            actions.push({"label":"Boost Reach","action":"boost_post","arg":""});
+         }
+         if(perms.can_claim_payout === true)
+         {
+            actions.push({"label":"Claim " + pendingLabel,"action":"claim_payout","arg":""});
+         }
          if(perms.can_subscribe === true)
          {
             actions.push({"label":"Subscribe","action":"subscribe_prompt","arg":""});
@@ -506,30 +721,32 @@ package widgets.Gameplay.SocialMedia
          actions.push({"label":"Refresh","action":"refresh","arg":""});
 
          var actionRows:Array = this.SplitVerifiedActions(actions);
-         var actionsH:Number = 22 + actionRows.length * 34;
-         this.AddVerifiedCard(20,y,503,actionsH,0xFFFFFF,0xDCCFE3,10);
-         this.AddVerifiedLabel("Manage subscription",11,0x241A2B,true,36,y + 8,300,18);
+         var actionRowH:Number = 42;
+         var actionsH:Number = 42 + actionRows.length * actionRowH;
+         this.AddVerifiedCard(cardX,y,cardW,actionsH,0xFFFFFF,0xDCCFE3,10);
+         this.AddVerifiedLabel("Manage subscription",14,0x241A2B,true,innerX,y + 10,300,22);
          var ar:int = 0;
          while(ar < actionRows.length)
          {
-            this.AddVerifiedButtonRow(actionRows[ar],y + 28 + ar * 34);
+            this.AddVerifiedButtonRow(actionRows[ar],y + 38 + ar * actionRowH);
             ar++;
          }
          y += actionsH + 12;
 
          var history:Array = sub.payment_history != null ? sub.payment_history : new Array();
          var histCount:int = Math.min(5,history.length);
-         var historyH:Number = histCount > 0 ? 34 + histCount * 24 : 54;
-         this.AddVerifiedCard(20,y,503,historyH,0xFFFFFF,0xDCCFE3,10);
-         this.AddVerifiedLabel("Payment history",13,0x241A2B,true,36,y + 10,220,20);
+         var histRowH:Number = 26;
+         var historyH:Number = histCount > 0 ? 44 + histCount * histRowH : 68;
+         this.AddVerifiedCard(cardX,y,cardW,historyH,0xFFFFFF,0xDCCFE3,10);
+         this.AddVerifiedLabel("Payment history",14,0x241A2B,true,innerX,y + 10,210,22);
          var startLabel:String = String(sub.start_label != null ? sub.start_label : "");
          if(startLabel != "")
          {
-            this.AddVerifiedLabel("Started " + startLabel,9,0x6F5B79,false,300,y + 12,190,16);
+            this.AddVerifiedLabel("Started " + startLabel,12,0x6F5B79,false,cardX + 244,y + 12,232,20);
          }
          if(histCount == 0)
          {
-            this.AddVerifiedLabel("No payments recorded yet.",10,0x6F5B79,false,36,y + 30,400,18);
+            this.AddVerifiedLabel("No payments recorded yet.",12,0x6F5B79,false,innerX,y + 38,440,22);
          }
          else
          {
@@ -537,10 +754,10 @@ package widgets.Gameplay.SocialMedia
             while(hi < histCount)
             {
                var h:Object = history[hi];
-               var hy:Number = y + 32 + hi * 24;
-               this.AddVerifiedLabel(String(h.date_label != null ? h.date_label : ""),9,0x6F5B79,false,36,hy,150,16);
-               this.AddVerifiedLabel(String(h.amount_label != null ? h.amount_label : ""),9,0x241A2B,true,200,hy,90,16);
-               this.AddVerifiedLabel(String(h.status_label != null ? h.status_label : ""),9,this.VerifiedStatusColor(String(h.status != null ? h.status : "")),true,300,hy,190,16);
+               var hy:Number = y + 38 + hi * histRowH;
+               this.AddVerifiedLabel(String(h.date_label != null ? h.date_label : ""),12,0x6F5B79,false,innerX,hy,178,20);
+               this.AddVerifiedLabel(String(h.amount_label != null ? h.amount_label : ""),12,0x241A2B,true,innerX + 184,hy,84,20);
+               this.AddVerifiedLabel(String(h.status_label != null ? h.status_label : ""),12,this.VerifiedStatusColor(String(h.status != null ? h.status : "")),true,innerX + 274,hy,186,20);
                hi++;
             }
          }
@@ -548,12 +765,13 @@ package widgets.Gameplay.SocialMedia
 
          var notices:Array = this.mVerifiedState.notifications != null ? this.mVerifiedState.notifications : new Array();
          var noticeCount:int = Math.min(4,notices.length);
-         var noticeH:Number = 34 + Math.max(1,noticeCount) * 24;
-         this.AddVerifiedCard(20,y,503,noticeH,0xFFFFFF,0xDCCFE3,10);
-         this.AddVerifiedLabel("Account activity",13,0x241A2B,true,36,y + 10,300,20);
+         var noticeRowH:Number = 26;
+         var noticeH:Number = 44 + Math.max(1,noticeCount) * noticeRowH;
+         this.AddVerifiedCard(cardX,y,cardW,noticeH,0xFFFFFF,0xDCCFE3,10);
+         this.AddVerifiedLabel("Account activity",14,0x241A2B,true,innerX,y + 10,300,22);
          if(noticeCount == 0)
          {
-            this.AddVerifiedLabel("Subscription notifications will appear here.",10,0x6F5B79,false,36,y + 30,430,18);
+            this.AddVerifiedLabel("Subscription notifications will appear here.",12,0x6F5B79,false,innerX,y + 38,440,22);
          }
          else
          {
@@ -561,36 +779,33 @@ package widgets.Gameplay.SocialMedia
             while(ni < noticeCount)
             {
                var n:Object = notices[ni];
-               var ny:Number = y + 32 + ni * 24;
-               this.AddVerifiedLabel(String(n.date_label != null ? n.date_label : ""),9,0x6F5B79,false,36,ny,116,16);
-               this.AddVerifiedLabel(this.ShortenVerified(String(n.message != null ? n.message : ""),64),9,0x241A2B,false,154,ny,340,16);
+               var ny:Number = y + 38 + ni * noticeRowH;
+               this.AddVerifiedLabel(String(n.date_label != null ? n.date_label : ""),12,0x6F5B79,false,innerX,ny,122,20);
+               this.AddVerifiedLabel(this.ShortenVerified(String(n.message != null ? n.message : ""),46),12,0x241A2B,false,innerX + 128,ny,332,20);
                ni++;
             }
          }
          y += noticeH + 16;
 
-         this.mVerifiedContentH = Math.max(PANEL_HEIGHT,y);
-         var maxScroll:Number = Math.max(0,this.mVerifiedContentH - PANEL_HEIGHT);
-         if(this.mVerifiedScrollY > maxScroll)
-         {
-            this.mVerifiedScrollY = maxScroll;
-         }
-         this.mVerifiedCanvas.y = -this.mVerifiedScrollY;
+         this.mVerifiedContentH = Math.max(viewH,y);
          this.DrawVerifiedScrollbar();
       }
 
       protected function DrawVerifiedLoading() : void
       {
-         this.AddVerifiedCard(20,12,503,122,0x5A2B6B,0,12);
-         this.AddVerifiedLabel("Social Bunny Verified",18,0xFFFFFF,true,36,26,330,26);
-         this.AddVerifiedLabel("Loading your subscription details\u2026",10,0xEBDDF1,false,36,58,330,30,true);
+         var cardX:Number = VERIFIED_CARD_X;
+         var cardW:Number = VERIFIED_CARD_W;
+         var innerX:Number = cardX + 16;
+         this.AddVerifiedCard(cardX,4,cardW,136,0x5A2B6B,0,12);
+         this.AddVerifiedLabel("Social Bunny Verified",18,0xFFFFFF,true,innerX,18,320,26);
+         this.AddVerifiedLabel("Loading your subscription details\u2026",12,0xEBDDF1,false,innerX,50,324,36,true);
          var badge:Sprite = this.CreateVerifiedBadge(50);
-         badge.x = 440;
-         badge.y = 28;
+         badge.x = cardX + cardW - 66;
+         badge.y = 22;
          this.mVerifiedCanvas.addChild(badge);
-         this.AddVerifiedCard(20,146,503,86,0xFFFFFF,0xDCCFE3,10);
-         this.AddVerifiedLabel("Connecting to the subscription service\u2026",11,0x241A2B,true,36,176,450,20);
-         this.AddVerifiedLabel("If this message remains, close and reopen Social Bunny.",10,0x6F5B79,false,36,198,450,20);
+         this.AddVerifiedCard(cardX,152,cardW,96,0xFFFFFF,0xDCCFE3,10);
+         this.AddVerifiedLabel("Connecting to the subscription service\u2026",14,0x241A2B,true,innerX,174,450,24);
+         this.AddVerifiedLabel("If this message remains, close and reopen Social Bunny.",12,0x6F5B79,false,innerX,202,450,22);
          if(!this.mbVerifiedRefreshPending)
          {
             this.mbVerifiedRefreshPending = true;
@@ -603,18 +818,19 @@ package widgets.Gameplay.SocialMedia
          var rows:Array = new Array();
          var current:Array = new Array();
          var currentW:Number = 0;
+         var maxRowW:Number = VERIFIED_CARD_W - 24;
          var i:int = 0;
          while(i < actions.length)
          {
             var width:Number = this.MeasureVerifiedButton(actions[i]);
-            if(current.length > 0 && currentW + 8 + width > 470)
+            if(current.length > 0 && (current.length >= 3 || currentW + VERIFIED_BTN_GAP + width > maxRowW))
             {
                rows.push(current);
                current = new Array();
                currentW = 0;
             }
             current.push(actions[i]);
-            currentW += (current.length > 1 ? 8 : 0) + width;
+            currentW += (current.length > 1 ? VERIFIED_BTN_GAP : 0) + width;
             i++;
          }
          if(current.length > 0)
@@ -626,39 +842,33 @@ package widgets.Gameplay.SocialMedia
 
       protected function MeasureVerifiedButton(item:Object) : Number
       {
-         // Native PostButton_Tag skin is approximately 110 px wide. Use the same
-         // width for every action button so labels stay legible and rows align.
-         return 110;
+         return VERIFIED_BTN_W;
       }
 
       protected function AddVerifiedButtonRow(items:Array, y:Number) : void
       {
-         var widths:Array = new Array();
          var total:Number = 0;
          var i:int = 0;
          while(i < items.length)
          {
-            var w:Number = this.MeasureVerifiedButton(items[i]);
-            widths.push(w);
-            total += w + (i > 0 ? 8 : 0);
+            total += VERIFIED_BTN_W + (i > 0 ? VERIFIED_BTN_GAP : 0);
             i++;
          }
-         var x:Number = Math.max(36,(this.mcVerifiedPanel.mcBackground.width - total) * 0.5);
+         var visualX:Number = VERIFIED_CARD_X + (VERIFIED_CARD_W - total) * 0.5;
          i = 0;
          while(i < items.length)
          {
             var item:Object = items[i];
             var btn:PostButton_Tag = new PostButton_Tag();
-            btn.htmlText = String(item.label);
             btn.name = "sbv_" + String(item.action);
             btn["sbvAction"] = String(item.action);
             btn["sbvArg"] = String(item.arg != null ? item.arg : "");
-            btn.width = Number(widths[i]);
-            btn.x = x;
+            btn.x = visualX + VERIFIED_BTN_LEFT_OVERHANG;
             btn.y = y;
             btn.addEventListener(PushButtonEvent.CLICK,this.OnVerifiedButtonClick,false,0,true);
             this.mVerifiedCanvas.addChild(btn);
-            x += widths[i] + 8;
+            btn.htmlText = String(item.label);
+            visualX += VERIFIED_BTN_W + VERIFIED_BTN_GAP;
             i++;
          }
       }
@@ -671,9 +881,9 @@ package widgets.Gameplay.SocialMedia
          pill.graphics.endFill();
          pill.x = x;
          pill.y = y;
-         var tf:TextField = this.CreateVerifiedLabel(label,10,0xFFFFFF,true,w - 8,h - 2,false,TextFormatAlign.CENTER);
-         tf.x = 4;
-         tf.y = 4;
+         var tf:TextField = this.CreateVerifiedLabel(label,12,0xFFFFFF,true,w - 10,h - 2,false,TextFormatAlign.CENTER);
+         tf.x = 5;
+         tf.y = Math.max(2,Math.round((h - 18) * 0.5));
          pill.addChild(tf);
          this.mVerifiedCanvas.addChild(pill);
       }
@@ -930,69 +1140,73 @@ package widgets.Gameplay.SocialMedia
 
          var shade:Sprite = new Sprite();
          shade.graphics.beginFill(0x000000,0.55);
-         shade.graphics.drawRect(0,0,this.mcVerifiedPanel.mcBackground.width,PANEL_HEIGHT);
+         shade.graphics.drawRect(0,0,this.mcVerifiedPanel.mcBackground.width,VERIFIED_PANEL_HEIGHT);
          shade.graphics.endFill();
          this.mVerifiedOverlay.addChild(shade);
 
-         var cardW:Number = 420;
-         var cardH:Number = 206;
+         var cardW:Number = 432;
+         var cardH:Number = 236;
          var card:Sprite = new Sprite();
          card.graphics.lineStyle(1,0xDCCFE3,1.0);
          card.graphics.beginFill(0xFFFFFF,1.0);
          card.graphics.drawRoundRect(0,0,cardW,cardH,12,12);
          card.graphics.endFill();
          card.x = (this.mcVerifiedPanel.mcBackground.width - cardW) * 0.5;
-         card.y = (PANEL_HEIGHT - cardH) * 0.5;
+         card.y = (VERIFIED_PANEL_HEIGHT - cardH) * 0.5;
          this.mVerifiedOverlay.addChild(card);
 
-         var title:TextField = this.CreateVerifiedLabel("Confirm Social Bunny Verified",14,0x241A2B,true,cardW - 32,22,false,TextFormatAlign.LEFT);
+         var title:TextField = this.CreateVerifiedLabel("Confirm Social Bunny Verified",16,0x241A2B,true,cardW - 32,24,false,TextFormatAlign.LEFT);
          title.x = 16;
          title.y = 14;
          card.addChild(title);
 
          var priceTf:TextField = this.CreateVerifiedLabel(price + " " + interval,16,0x5A2B6B,true,cardW - 32,24,false,TextFormatAlign.LEFT);
          priceTf.x = 16;
-         priceTf.y = 42;
+         priceTf.y = 44;
          card.addChild(priceTf);
 
          var body:TextField = this.CreateVerifiedLabel(
             "This will deduct " + price + " from household funds now. Your subscription renews automatically and can be cancelled from this tab at any time.",
-            10,
+            12,
             0x241A2B,
             false,
             cardW - 32,
-            54,
+            66,
             true,
             TextFormatAlign.LEFT
          );
          body.x = 16;
-         body.y = 74;
+         body.y = 76;
          card.addChild(body);
 
-         var note:TextField = this.CreateVerifiedLabel("Simoleons only. No real-world payment is ever made.",9,0x6F5B79,false,cardW - 32,18,false,TextFormatAlign.LEFT);
+         var note:TextField = this.CreateVerifiedLabel("Simoleons only. No real-world payment is ever made.",12,0x6F5B79,false,cardW - 32,22,false,TextFormatAlign.LEFT);
          note.x = 16;
-         note.y = 134;
+         note.y = 146;
          card.addChild(note);
 
+         var pairGap:Number = 24;
+         var pairTotalW:Number = VERIFIED_BTN_W * 2 + pairGap;
+         var pairStartVisualX:Number = (cardW - pairTotalW) * 0.5;
+
          var confirm:PostButton_Tag = new PostButton_Tag();
-         confirm.htmlText = "Confirm";
          confirm.name = "sbv_confirm";
          confirm["sbvAction"] = "confirm_subscribe";
          confirm["sbvArg"] = "";
-         confirm.x = 118;
-         confirm.y = 158;
+         confirm.x = pairStartVisualX + VERIFIED_BTN_LEFT_OVERHANG;
+         confirm.y = 180;
          confirm.addEventListener(PushButtonEvent.CLICK,this.OnVerifiedButtonClick,false,0,true);
          card.addChild(confirm);
+         confirm.htmlText = "Confirm";
 
          var back:PostButton_Tag = new PostButton_Tag();
-         back.htmlText = "Back";
          back.name = "sbv_dismiss";
          back["sbvAction"] = "dismiss";
          back["sbvArg"] = "";
-         back.x = 232;
-         back.y = 158;
+         back.x = pairStartVisualX + VERIFIED_BTN_W + pairGap + VERIFIED_BTN_LEFT_OVERHANG;
+         back.y = 180;
          back.addEventListener(PushButtonEvent.CLICK,this.OnVerifiedButtonClick,false,0,true);
          card.addChild(back);
+         back.htmlText = "Back";
       }
 
       protected function HideVerifiedConfirm() : void
@@ -1559,9 +1773,24 @@ package widgets.Gameplay.SocialMedia
             this.removeChild(this.mcMessagesPanel);
          }
          this.mcMessagesPanel = null;
-         if(Boolean(this.mcVerifiedPanel) && this.mcVerifiedPanel.parent == this)
+         if(this.mVerifiedCanvas != null)
          {
-            this.removeChild(this.mcVerifiedPanel);
+            this.mVerifiedCanvas.mask = null;
+         }
+         if(this.mcVerifiedPanel != null)
+         {
+            this.mcVerifiedPanel.removeEventListener(MouseEvent.MOUSE_WHEEL,this.OnVerifiedMouseWheel);
+            this.mcVerifiedPanel.removeEventListener(Event.ENTER_FRAME,this.OnVerifiedEnterFrame);
+            if(this.mcVerifiedPanel.mcList != null && this.mcVerifiedPanel.mcList.mSlider != null)
+            {
+               this.mcVerifiedPanel.mcList.mSlider.removeEventListener(SmoothSliderEvent.SNAP,this.OnVerifiedSliderChanged);
+               this.mcVerifiedPanel.mcList.mSlider.removeEventListener(SmoothSliderEvent.SLIDE,this.OnVerifiedSliderChanged);
+               this.mcVerifiedPanel.mcList.mSlider.removeEventListener(SmoothSliderEvent.DRAG_CONTINUE,this.OnVerifiedSliderChanged);
+            }
+            if(this.mcVerifiedPanel.parent == this)
+            {
+               this.removeChild(this.mcVerifiedPanel);
+            }
          }
          this.mcVerifiedPanel = null;
          this.mVerifiedCanvas = null;
@@ -1571,6 +1800,7 @@ package widgets.Gameplay.SocialMedia
          this.mVerifiedContentH = 0;
          this.mVerifiedScrollY = 0;
          this.mbVerifiedConfirming = false;
+         this.mbVerifiedListDetached = false;
          this.mbVerifiedRefreshPending = false;
          this.mVerifiedState = null;
          this.mNativeFeedItems = new Array();

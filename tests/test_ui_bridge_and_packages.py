@@ -100,8 +100,12 @@ class TestVerifiedUIBridgeAndPackages(unittest.TestCase):
                 if not filename.endswith(".as"):
                     continue
                 original_path = os.path.join(root, filename)
-                relative = os.path.relpath(original_path, original)
-                if relative.replace("\\", "/") == "widgets/Gameplay/SocialMedia/SocialMediaPanel.as":
+                relative = os.path.relpath(original_path, original).replace("\\", "/")
+                if relative in (
+                    "widgets/Gameplay/SocialMedia/SocialMediaPanel.as",
+                    "widgets/Gameplay/SocialMedia/SocialMediaReactionCellView.as",
+                    "widgets/Gameplay/SocialMedia/SocialMediaFeedCellView.as",
+                ):
                     continue
                 current_path = os.path.join(current, relative)
                 with open(original_path, "rb") as handle:
@@ -110,7 +114,7 @@ class TestVerifiedUIBridgeAndPackages(unittest.TestCase):
                     actual = handle.read()
                 self.assertEqual(actual, expected, msg="Vanilla script changed: {}".format(relative))
                 compared += 1
-        self.assertGreaterEqual(compared, 30)
+        self.assertGreaterEqual(compared, 28)
 
 
 if __name__ == "__main__":

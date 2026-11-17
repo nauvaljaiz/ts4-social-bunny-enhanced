@@ -42,6 +42,9 @@ class FakeFunds(object):
         self.money -= amount
         return amount
 
+    def add(self, amount, reason, sim, count_as_earnings=False):
+        self.money += int(amount)
+
 
 class FakeSim(object):
     def __init__(self, sim_id, name, is_npc=False):
@@ -68,12 +71,20 @@ class VerifiedSubscriptionTestBase(unittest.TestCase):
         self.funds = FakeFunds(1000)
         self.sims = {101: FakeSim(101, "Alex"), 102: FakeSim(102, "Blair"), 103: FakeSim(103, "Casey", True)}
         self.slot_id = 3
+        self.followers = {}
+        self.fame = {}
+        self.friendships = {}
+        self.reactions_triggered = []
 
         self.adapter = VerifiedGameAdapter(
             sim_provider=self._sim_provider,
             now_provider=lambda: self.now,
             slot_provider=lambda: self.slot_id,
             funds_provider=lambda sim_id: self.funds,
+            followers_provider=self._followers_provider,
+            fame_provider=self._fame_provider,
+            reaction_provider=self._reaction_provider,
+            friendship_provider=self._friendship_provider,
         )
         self.config = load_verified_config(self.tmp)
         self.persistence = VerifiedPersistence(self.tmp)
@@ -341,6 +352,149 @@ class TestVerifiedSubscription(VerifiedSubscriptionTestBase):
         self.assertEqual(configured["plan"]["price"], 999)
         self.assertEqual(configured["plan"]["billing_interval_days"], 3)
         clear_config_cache()
+
+    def test_bool_try_remove_and_try_remove_amount_match_ts4(self):
+        class BoolOnlyFunds(object):
+            def __init__(self, money):
+                self.money = int(money)
+
+            def can_afford(self, amount):
+                return self.money >= int(amount)
+
+            def try_remove(self, amount, reason, sim, require_full_amount):
+                amount = int(amount)
+                if self.money < amount:
+                    return False
+                self.money -= amount
+                return True
+
+        class FullTS4Funds(BoolOnlyFunds):
+            def try_remove_amount(self, amount, reason, sim, require_full_amount):
+                amount = int(amount)
+                if self.money < amount:
+                    return None
+                self.money -= amount
+                return amount
+
+        for cls in (BoolOnlyFunds, FullTS4Funds):
+            funds_obj = cls(500)
+            self.adapter._funds_provider = lambda _sid, obj=funds_obj: obj
+            res = self.billing.charge(101, 250)
+            self.assertTrue(res["ok"], res)
+            self.assertEqual(funds_obj.money, 250)
+            # Insufficient after debit
+            funds_obj.money = 100
+            fail_res = self.billing.charge(101, 250)
+            self.assertFalse(fail_res["ok"])
+            self.assertEqual(funds_obj.money, 100)
+
+    def _followers_provider(self, op, sim_id, delta):
+        sid = str(sim_id)
+        if op == "get":
+            return self.followers.get(sid, 0)
+        self.followers[sid] = max(0, int(self.followers.get(sid, 0)) + int(delta))
+        return self.followers[sid]
+
+    def _fame_provider(self, sim_id, amount):
+        sid = str(sim_id)
+        self.fame[sid] = self.fame.get(sid, 0.0) + float(amount)
+        return True
+
+    def _reaction_provider(self, sim_id, max_reactions):
+        self.reactions_triggered.append((str(sim_id), int(max_reactions)))
+        return int(max_reactions)
+
+    def _friendship_provider(self, sim_a, sim_b, amount):
+        key = (str(sim_a), str(sim_b))
+        self.friendships[key] = self.friendships.get(key, 0.0) + float(amount)
+        return True
+
+    def test_verified_gameplay_perks_followers_payout_boost_and_fame(self):
+        # Unverified Sim gets no perks
+        self.assertIsNone(self.manager.on_verified_post_created(101))
+        self.assertFalse(self.manager.boost_post(101)["ok"])
+
+        # Subscribe triggers welcome spotlight (+75 followers + Fame)
+        self.assertTrue(self.subscribe(101)["ok"])
+        self.assertEqual(self.followers["101"], 75)
+        self.assertGreater(self.fame["101"], 0)
+
+        # Post created & NPC reactions grant followers, Fame, and ad revenue
+        post_perk = self.manager.on_verified_post_created(101)
+        self.assertIsNotNone(post_perk)
+        self.assertEqual(post_perk["followers_added"], 12)
+        self.assertGreaterEqual(post_perk["payout_earned"], 35)
+        react_perk = self.manager.on_verified_post_reaction(101)
+        self.assertEqual(react_perk["followers_added"], 3)
+        self.assertEqual(react_perk["payout_earned"], 10)
+
+        # Boost Reach starts a non-instant 4-hour Spotlight Campaign, then enforces 24h cooldown
+        before_boost_followers = self.followers["101"]
+        boost1 = self.manager.handle_action(101, "boost_post")
+        self.assertTrue(boost1["ok"])
+        self.assertTrue(boost1["boost_active"])
+        self.assertEqual(boost1["followers_added"], 0)
+        self.assertEqual(self.followers["101"], before_boost_followers)
+
+        snap_start = self.manager.build_snapshot(101)
+        self.assertTrue(snap_start["perks"]["boost_active"])
+        self.assertEqual(snap_start["perks"]["boost_progress"], 0)
+        self.assertFalse(snap_start["permissions"]["can_boost_post"])
+
+        boost_dup = self.manager.handle_action(101, "boost_post")
+        self.assertFalse(boost_dup["ok"])
+        self.assertEqual(boost_dup["code"], "boost_in_progress")
+
+        # Advance 1h -> 25%, 2h -> 50%, 4h -> 100% completed + 24h cooldown starts
+        self.now += self.adapter.ticks_from_hours(1)
+        snap_1h = self.manager.build_snapshot(101)
+        self.assertTrue(snap_1h["perks"]["boost_active"])
+        self.assertEqual(snap_1h["perks"]["boost_progress"], 25)
+        self.assertGreater(snap_1h["perks"]["boost_followers_gained"], 0)
+
+        self.now += self.adapter.ticks_from_hours(1)
+        snap_2h = self.manager.build_snapshot(101)
+        self.assertTrue(snap_2h["perks"]["boost_active"])
+        self.assertEqual(snap_2h["perks"]["boost_progress"], 50)
+        self.assertGreater(snap_2h["perks"]["boost_followers_gained"], snap_1h["perks"]["boost_followers_gained"])
+
+        self.now += self.adapter.ticks_from_hours(2)
+        snap_done = self.manager.build_snapshot(101)
+        self.assertFalse(snap_done["perks"]["boost_active"])
+        self.assertEqual(snap_done["perks"]["boost_count"], 1)
+        self.assertFalse(snap_done["perks"]["boost_ready"])
+        self.assertGreater(self.followers["101"], before_boost_followers)
+
+        boost_cd = self.manager.handle_action(101, "boost_post")
+        self.assertFalse(boost_cd["ok"])
+        self.assertEqual(boost_cd["code"], "boost_cooldown")
+
+        # Advance 20h (only 20h of 24h cooldown elapsed) -> still cooling down
+        self.now += self.adapter.ticks_from_hours(20)
+        self.assertEqual(self.manager.handle_action(101, "boost_post")["code"], "boost_cooldown")
+
+        # Advance another 5h (25h total cooldown) -> campaign can start again
+        self.now += self.adapter.ticks_from_hours(5)
+        self.assertTrue(self.manager.handle_action(101, "boost_post")["ok"])
+
+        # Snapshot exposes perks and claim_payout deposits Simoleons to household funds
+        snap = self.manager.build_snapshot(101)
+        pending = snap["perks"]["pending_payout"]
+        self.assertGreater(pending, 0)
+        self.assertTrue(snap["permissions"]["can_claim_payout"])
+        money_before = self.funds.money
+        claim = self.manager.handle_action(101, "claim_payout")
+        self.assertTrue(claim["ok"])
+        self.assertEqual(self.funds.money, money_before + pending)
+        self.assertEqual(self.manager.build_snapshot(101)["perks"]["pending_payout"], 0)
+
+        # Algorithm follower recount boosts positive gain by 2.5x and prevents loss
+        self.assertGreater(self.manager.on_verified_follower_recount(101, 20), 0)
+        self.assertGreaterEqual(self.manager.on_verified_follower_recount(101, -5), 25)
+
+        # Adding a contact grants friendship clout bonus
+        self.assertTrue(self.manager.on_verified_friend_added(101, 102))
+        self.assertEqual(self.friendships[("101", "102")], 8.0)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ package widgets.Gameplay.SocialMedia
 {
    import flash.display.MovieClip;
    import flash.text.TextField;
+   import flash.text.TextFieldAutoSize;
    import gamedata.Gameplay.SocialMedia.SocialMediaPostReaction;
    import gamedata.Gameplay.shared.SocialMediaReaction;
    import gamedata.Gameplay.shared.definitions.SocialMediaStaticData;
@@ -43,8 +44,29 @@ package widgets.Gameplay.SocialMedia
          {
             return;
          }
-         gotoAndStop("reaction");
-         this.txtCounter.htmlText = _loc3_.count.toString();
+         if(this.currentLabel != "reaction" || this.txtCounter == null)
+         {
+            gotoAndStop("reaction");
+         }
+         var _loc5_:int = _loc3_.count;
+         var _loc6_:String = _loc5_ >= 1000 ? String(Math.floor(_loc5_ / 1000)) + "k" : _loc5_.toString();
+         this.txtCounter.wordWrap = false;
+         this.txtCounter.multiline = false;
+         this.txtCounter.autoSize = TextFieldAutoSize.NONE;
+         if(this.txtCounter.width < 28)
+         {
+            this.txtCounter.x = 25;
+            this.txtCounter.width = 28;
+         }
+         this.txtCounter.scrollH = 0;
+         if(_loc5_ >= 99)
+         {
+            this.txtCounter.htmlText = "<p align=\"left\"><font size=\"10\" color=\"#0949ab\">" + _loc6_ + "</font></p>";
+         }
+         else
+         {
+            this.txtCounter.htmlText = _loc6_;
+         }
          this.mcFriendly01.visible = false;
          this.mcFriendly02.visible = false;
          this.mcFlirty01.visible = false;
