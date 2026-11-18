@@ -505,6 +505,45 @@ package widgets.Gameplay.SocialMedia
          }
       }
 
+      protected function DrawVerifiedMeter(x:Number,y:Number,w:Number,h:Number,pct:Number,color:uint) : void
+      {
+         var safePct:Number = Math.max(0,Math.min(100,pct));
+         this.mVerifiedCanvas.graphics.beginFill(0xECE6F2,1);
+         this.mVerifiedCanvas.graphics.drawRoundRect(x,y,w,h,4,4);
+         this.mVerifiedCanvas.graphics.endFill();
+         if(safePct > 0)
+         {
+            this.mVerifiedCanvas.graphics.beginFill(color,1);
+            this.mVerifiedCanvas.graphics.drawRoundRect(x,y,Math.max(h,w * safePct / 100),h,4,4);
+            this.mVerifiedCanvas.graphics.endFill();
+         }
+      }
+
+      protected function DrawVerifiedAudienceBar(x:Number,y:Number,w:Number,h:Number,loyal:Number,casual:Number,drama:Number,anti:Number) : void
+      {
+         var total:Number = loyal + casual + drama + anti;
+         if(total <= 0)
+         {
+            total = 100;
+         }
+         var lw:Number = w * loyal / total;
+         var cw:Number = w * casual / total;
+         var dw:Number = w * drama / total;
+         var aw:Number = w - lw - cw - dw;
+         this.mVerifiedCanvas.graphics.beginFill(0x2E7D32,1);
+         this.mVerifiedCanvas.graphics.drawRect(x,y,Math.max(0,lw),h);
+         this.mVerifiedCanvas.graphics.endFill();
+         this.mVerifiedCanvas.graphics.beginFill(0x74A9D8,1);
+         this.mVerifiedCanvas.graphics.drawRect(x + lw,y,Math.max(0,cw),h);
+         this.mVerifiedCanvas.graphics.endFill();
+         this.mVerifiedCanvas.graphics.beginFill(0xF5A623,1);
+         this.mVerifiedCanvas.graphics.drawRect(x + lw + cw,y,Math.max(0,dw),h);
+         this.mVerifiedCanvas.graphics.endFill();
+         this.mVerifiedCanvas.graphics.beginFill(0xB3261E,1);
+         this.mVerifiedCanvas.graphics.drawRect(x + lw + cw + dw,y,Math.max(0,aw),h);
+         this.mVerifiedCanvas.graphics.endFill();
+      }
+
       protected function DrawVerifiedScrollbar() : void
       {
          if(this.mcVerifiedPanel == null || this.mcVerifiedPanel.mcList == null || this.mcVerifiedPanel.mcList.mSlider == null)
@@ -659,6 +698,35 @@ package widgets.Gameplay.SocialMedia
          }
 
          y += perksCardH + 12;
+
+         var prStudio:Object = this.mVerifiedState.pr_studio != null ? this.mVerifiedState.pr_studio : new Object();
+         var prAudience:Object = prStudio.audience_segments != null ? prStudio.audience_segments : new Object();
+         var prTier:String = String(prStudio.tier != null ? prStudio.tier : "none");
+         var prCredibility:int = int(prStudio.credibility != null ? prStudio.credibility : 65);
+         var prSafety:int = int(prStudio.brand_safety != null ? prStudio.brand_safety : 80);
+         var prBattery:Number = Number(prStudio.social_battery != null ? prStudio.social_battery : 100);
+         var prState:String = String(prStudio.cancelation_state != null ? prStudio.cancelation_state : "NORMAL");
+         this.AddVerifiedCard(cardX,y,cardW,142,0xFFF9FD,0xDCCFE3,10);
+         this.AddVerifiedLabel("PR & Audience Studio",14,0x241A2B,true,innerX,y + 10,300,22);
+         this.AddVerifiedLabel("Tier: " + prTier,12,0x1D9BF0,true,rightX,y + 12,174,20);
+         this.AddVerifiedLabel("Credibility",12,0x6F5B79,false,innerX,y + 38,140,18);
+         this.DrawVerifiedMeter(innerX,y + 58,140,8,prCredibility,0x1D9BF0);
+         this.AddVerifiedLabel(String(prCredibility),12,0x241A2B,true,innerX + 148,y + 52,36,20);
+         this.AddVerifiedLabel("Brand Safety",12,0x6F5B79,false,innerX,y + 78,140,18);
+         this.DrawVerifiedMeter(innerX,y + 98,140,8,prSafety,0x7CB342);
+         this.AddVerifiedLabel(String(prSafety),12,0x241A2B,true,innerX + 148,y + 92,36,20);
+         this.AddVerifiedLabel("Social Battery",12,0x6F5B79,false,rightX,y + 38,174,18);
+         this.DrawVerifiedMeter(rightX,y + 58,174,8,int(Math.max(0,Math.min(100,prBattery))),0xF5A623);
+         this.AddVerifiedLabel(prState,12,prState == "NORMAL" ? 0x2E7D32 : 0xB3261E,true,rightX,y + 78,174,22);
+         var loyal:Number = Number(prAudience.core_loyalists != null ? prAudience.core_loyalists : 40);
+         var casual:Number = Number(prAudience.casual_browsers != null ? prAudience.casual_browsers : 35);
+         var drama:Number = Number(prAudience.drama_vultures != null ? prAudience.drama_vultures : 15);
+         var anti:Number = Number(prAudience.anti_fans != null ? prAudience.anti_fans : 10);
+         var audienceX:Number = rightX;
+         var audienceW:Number = 174;
+         var audienceY:Number = 128;
+         this.DrawVerifiedAudienceBar(audienceX,y + audienceY,audienceW,8,loyal,casual,drama,anti);
+         y += 154;
 
          var benefits:Array = this.mVerifiedState.benefits != null ? this.mVerifiedState.benefits : (plan.benefits != null ? plan.benefits : new Array());
          var rows:int = Math.ceil(benefits.length / 2);
@@ -2143,4 +2211,3 @@ package widgets.Gameplay.SocialMedia
       }
    }
 }
-

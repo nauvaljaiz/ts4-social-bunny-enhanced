@@ -252,7 +252,7 @@ class VerifiedUIBridge(object):
                 try:
                     changed = self.manager.process_due_all()
                     sims4.commands.output(
-                        "SocialBunnyVerified: processed billing for {} subscription(s)".format(changed),
+                        "SocialBunnyVerified: processed hourly systems and billing ({} change(s))".format(changed),
                         _connection,
                     )
                 except Exception:
@@ -261,6 +261,10 @@ class VerifiedUIBridge(object):
             @sims4.commands.Command("sbv.verified_reload", command_type=sims4.commands.CommandType.Live)
             def _cmd_verified_reload(_connection=None):
                 try:
+                    from .verified_config import clear_config_cache, load_verified_config
+                    clear_config_cache()
+                    reloaded = load_verified_config(self.manager.persistence.data_dir)
+                    self.manager.config.update(reloaded)
                     self.manager.reload()
                     sims4.commands.output(
                         "SocialBunnyVerified: reloaded slot {}".format(self.manager.loaded_slot_id),
@@ -268,6 +272,30 @@ class VerifiedUIBridge(object):
                     )
                 except Exception:
                     sims4.commands.output("SocialBunnyVerified: reload failed", _connection)
+
+            @sims4.commands.Command("sbv.verified_debug_event", command_type=sims4.commands.CommandType.Live)
+            def _cmd_verified_debug_event(event: str = "cancel", _connection=None):
+                try:
+                    event = _decode_arg(event).lower()
+                    sim_id = self.manager.adapter.get_active_sim_id()
+                    if sim_id is None:
+                        raise RuntimeError("No active Sim")
+                    sid = str(sim_id)
+                    self.manager.ensure_loaded()
+                    record = self.manager.get_record(sid)
+                    if record is None:
+                        record = self.manager._ensure_record(sid, self.manager.adapter.get_now_ticks())
+                    now = int(self.manager.adapter.get_now_ticks())
+                    if event == "leak":
+                        self.manager.dm_engine.apply_leak(record, 0.15, now)
+                    elif event == "ratio":
+                        self.manager.comment_engine.evaluate_ratio(record, 100, 50, True, now)
+                    else:
+                        self.manager.audience_engine.trigger(record, "debug")
+                    self.manager.save()
+                    sims4.commands.output("SocialBunnyVerified: debug event {}".format(event), _connection)
+                except Exception as exc:
+                    sims4.commands.output("SocialBunnyVerified: debug event failed {}".format(exc), _connection)
         except Exception:
             self._last_error = traceback.format_exc()
             self.log("install commands error:\n" + self._last_error)

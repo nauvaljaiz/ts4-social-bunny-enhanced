@@ -10,6 +10,7 @@ import json
 import os
 
 DEFAULT_CONFIG = {
+    "schema_version": 2,
     "config_version": 1,
     "plan": {
         "plan_id": "social_bunny_verified",
@@ -69,6 +70,49 @@ DEFAULT_CONFIG = {
     "persistence": {
         "schema_version": 2,
     },
+    "tiers": {
+        "creator_blue": {"name": "Creator Blue", "price": 250, "billing_days": 7, "min_followers": 300, "min_charisma": 4, "min_posts": 5, "min_credibility": 50},
+        "partner_gold": {"name": "Partner Gold", "price": 850, "billing_days": 7, "min_followers": 2500, "min_credibility": 75, "min_fame": 2},
+        "mogul_obsidian": {"name": "Mogul Obsidian", "price": 2500, "billing_days": 7, "min_followers": 10000, "min_credibility": 85, "min_fame": 3},
+    },
+    "credibility": {
+        "initial_credibility": 65,
+        "initial_brand_safety": 80,
+        "revocation_threshold": 25,
+        "inactivity_decay_days": 4,
+        "spam_post_window_hours": 6,
+        "max_posts_per_window": 2,
+        "base_rpm": 2.5,
+    },
+    "dm_balance": {
+        "social_battery_max": 100.0,
+        "dm_battery_cost": 8.0,
+        "stranger_dm_battery_cost": 15.0,
+        "battery_regen_per_hour": 5.0,
+        "cooldown_hours": 12,
+        "first_dm_rel_gain": 2.0,
+        "second_dm_rel_gain": 0.5,
+        "spam_dm_rel_penalty": -5.0,
+        "flirty_leak_chance": 0.65,
+        "friendship_bonus_on_add": 1.5,
+    },
+    "audience": {
+        "niche_drift_window": 10,
+        "niche_drift_loyalist_loss_pct": 0.12,
+        "cancel_hourly_bleed_min_pct": 0.01,
+        "cancel_hourly_bleed_max_pct": 0.03,
+        "redemption_charity_cost": 1000,
+        "redemption_clean_hours": 48,
+    },
+    "comments": {
+        "ratio_threshold": 1.5,
+        "ratio_window_hours": 4,
+        "rival_ratio_follower_transfer_pct": 0.03,
+        "clap_back_engagement_multiplier": 3.0,
+        "clap_back_brand_safety_penalty": 15,
+        "delete_spam_threshold_24h": 2,
+        "streisand_credibility_penalty": 15,
+    },
 }
 
 _CONFIG_CACHE = {}
@@ -101,9 +145,15 @@ def load_verified_config(data_dir):
 
     merged = {
         "config_version": DEFAULT_CONFIG["config_version"],
+        "schema_version": DEFAULT_CONFIG["schema_version"],
         "plan": dict(DEFAULT_CONFIG["plan"]),
         "benefits": dict(DEFAULT_CONFIG["benefits"]),
         "persistence": dict(DEFAULT_CONFIG["persistence"]),
+        "tiers": dict(DEFAULT_CONFIG["tiers"]),
+        "credibility": dict(DEFAULT_CONFIG["credibility"]),
+        "dm_balance": dict(DEFAULT_CONFIG["dm_balance"]),
+        "audience": dict(DEFAULT_CONFIG["audience"]),
+        "comments": dict(DEFAULT_CONFIG["comments"]),
     }
     path = config_path(data_dir)
     try:

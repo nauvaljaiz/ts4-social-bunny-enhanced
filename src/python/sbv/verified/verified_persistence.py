@@ -181,6 +181,24 @@ class VerifiedPersistence(object):
             record.setdefault("payment_history", [])
             if not isinstance(record.get("payment_history"), list):
                 record["payment_history"] = []
+            record.setdefault("tier", "creator_blue")
+            record.setdefault("contracts", [])
+            record.setdefault("contract_lock_until", 0)
+            record.setdefault("active_strikes", 0)
+            record.setdefault("credibility_score", 65)
+            record.setdefault("brand_safety_score", 80)
+            record.setdefault("social_battery", 100.0)
+            record.setdefault("dm_pair_history", {})
+            record.setdefault("audience_segments", {
+                "core_loyalists": 40,
+                "casual_browsers": 35,
+                "drama_vultures": 15,
+                "anti_fans": 10,
+            })
+            record.setdefault("post_categories", [])
+            record.setdefault("cancelation_state", "NORMAL")
+            record.setdefault("comment_threads", [])
+            record.setdefault("purge_times_24h", [])
 
         for key, value in data.items():
             if key not in base:

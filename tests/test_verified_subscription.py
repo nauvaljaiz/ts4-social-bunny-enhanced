@@ -553,7 +553,7 @@ class TestVerifiedSubscription(VerifiedSubscriptionTestBase):
 
         # Adding a contact grants friendship clout bonus
         self.assertTrue(self.manager.on_verified_friend_added(101, 102))
-        self.assertEqual(self.friendships[("101", "102")], 8.0)
+        self.assertEqual(self.friendships[("101", "102")], 1.5)
 
 
 if __name__ == "__main__":

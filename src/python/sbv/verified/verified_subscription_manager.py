@@ -3,6 +3,11 @@
 
 from .verified_billing_service import VerifiedBillingService
 from .verified_eligibility_service import VerifiedEligibilityService
+from .tiers_and_contracts import TiersAndContractsEngine
+from .credibility_engine import CredibilityEngine
+from .dm_interceptor import DMInterceptorEngine
+from .audience_engine import AudienceEngine
+from .comment_warfare import CommentWarfareEngine
 
 import random
 
@@ -26,6 +31,11 @@ class VerifiedSubscriptionManager(object):
         self.notifications = notifications
         self.billing = billing or VerifiedBillingService(adapter, notifications, self.plan)
         self.eligibility = eligibility or VerifiedEligibilityService(adapter)
+        self.tiers_engine = TiersAndContractsEngine(config, adapter)
+        self.credibility_engine = CredibilityEngine(config, adapter)
+        self.dm_engine = DMInterceptorEngine(config, adapter)
+        self.audience_engine = AudienceEngine(config, adapter)
+        self.comment_engine = CommentWarfareEngine(config, adapter)
         self._payload = None
         self._loaded_slot_id = None
         self._alarm_handle = None
@@ -133,6 +143,24 @@ class VerifiedSubscriptionManager(object):
             "boost_reactions_gained": 0,
             "welcome_bonus_granted_at": 0,
             "payment_history": [],
+            "tier": "creator_blue",
+            "contracts": [],
+            "contract_lock_until": 0,
+            "active_strikes": 0,
+            "credibility_score": 65,
+            "brand_safety_score": 80,
+            "social_battery": 100.0,
+            "dm_pair_history": {},
+            "audience_segments": {
+                "core_loyalists": 40,
+                "casual_browsers": 35,
+                "drama_vultures": 15,
+                "anti_fans": 10,
+            },
+            "post_categories": [],
+            "cancelation_state": "NORMAL",
+            "comment_threads": [],
+            "purge_times_24h": [],
         }
         self._subscriptions()[sid] = record
         self._touch()
@@ -261,6 +289,39 @@ class VerifiedSubscriptionManager(object):
             if age > self.adapter.ticks_from_hours(1):
                 last_result = None
 
+        pr_record = self.tiers_engine.ensure_state(record) if record is not None else {}
+        if record is not None:
+            self.credibility_engine.ensure_state(record)
+            self.dm_engine.ensure_state(record)
+            self.audience_engine.ensure_state(record)
+            self.comment_engine.ensure_state(record)
+            pr_studio = {
+                "tier": record.get("tier", "creator_blue"),
+                "credibility": int(record.get("credibility_score", 65)),
+                "brand_safety": int(record.get("brand_safety_score", 80)),
+                "social_battery": float(record.get("social_battery", 100.0)),
+                "cancelation_state": record.get("cancelation_state", "NORMAL"),
+                "audience_segments": record.get("audience_segments", {}),
+                "contracts": record.get("contracts", []),
+                "contract_lock_until": int(record.get("contract_lock_until", 0) or 0),
+                "comment_threads": record.get("comment_threads", []),
+                "redemption": record.get("redemption", {}),
+                "active_strikes": int(record.get("active_strikes", 0) or 0),
+            }
+        else:
+            pr_studio = {
+                "tier": "none",
+                "credibility": 65,
+                "brand_safety": 80,
+                "social_battery": 100.0,
+                "cancelation_state": "NORMAL",
+                "audience_segments": {"core_loyalists": 40, "casual_browsers": 35, "drama_vultures": 15, "anti_fans": 10},
+                "contracts": [],
+                "comment_threads": [],
+                "redemption": {},
+                "active_strikes": 0,
+            }
+
         return {
             "version": 2,
             "kind": "social_bunny_verified",
@@ -288,6 +349,7 @@ class VerifiedSubscriptionManager(object):
             "benefits": benefits,
             "notifications": notification_items,
             "last_result": last_result,
+            "pr_studio": pr_studio,
             "last_successful_payment_label": (
                 self.adapter.format_sim_time(last_payment) if last_payment else ""
             ),
@@ -524,6 +586,14 @@ class VerifiedSubscriptionManager(object):
             result = self.boost_post(sim_id)
         elif action == "claim_payout":
             result = self.claim_payout(sim_id)
+        elif action == "generate_contract":
+            result = self.generate_contract(sim_id)
+        elif action == "clarification_post":
+            result = self.publish_clarification(sim_id)
+        elif action == "charity_donation":
+            result = self.donate_charity(sim_id, arg1)
+        elif action in ("deescalate", "clap_back", "spin_narrative", "silent_purge"):
+            result = self.moderate_comment(sim_id, action, arg1)
         elif action == "refresh":
             result = self.refresh(sim_id)
         else:
@@ -973,9 +1043,80 @@ class VerifiedSubscriptionManager(object):
         record["total_bonus_followers"] = int(record.get("total_bonus_followers", 0) or 0) + follower_bonus
         record["pending_payout"] = int(record.get("pending_payout", 0) or 0) + payout
         record["total_earnings"] = int(record.get("total_earnings", 0) or 0) + payout
+        self.credibility_engine.record_post(record, now, "Friendly")
+        self.audience_engine.record_post(record, "Friendly")
+        self.tiers_engine.record_positive_post(record, "Friendly")
+        self.comment_engine.generate_thread(record, 5, now)
         self._touch()
         self.save()
         return {"followers_added": follower_bonus, "payout_earned": payout}
+
+    def generate_contract(self, sim_id):
+        record = self.get_record(sim_id)
+        if record is None:
+            return {"ok": False, "code": "not_subscribed", "message": "Subscribe before accepting brand contracts."}
+        contract = self.tiers_engine.generate_contract(record, int(self.adapter.get_now_ticks()))
+        if contract is None:
+            return {"ok": False, "code": "tier_locked", "message": "Brand contracts require Partner Gold or Mogul Obsidian."}
+        self._touch()
+        self.save()
+        return {"ok": True, "code": "contract_created", "contract": contract}
+
+    def publish_clarification(self, sim_id):
+        record = self.get_record(sim_id)
+        if record is None:
+            return {"ok": False, "code": "not_subscribed", "message": "Verified account required."}
+        self.audience_engine.clarification_post(record)
+        self._touch()
+        self.save()
+        return {"ok": True, "code": "clarification_posted", "message": "Clarification Post published."}
+
+    def donate_charity(self, sim_id, amount):
+        record = self.get_record(sim_id)
+        if record is None:
+            return {"ok": False, "code": "not_subscribed", "message": "Verified account required."}
+        try:
+            donation = int(amount)
+        except Exception:
+            donation = 0
+        minimum = int(self.config.get("audience", {}).get("redemption_charity_cost", 1000))
+        if donation < minimum:
+            return {"ok": False, "code": "insufficient_donation", "message": "Minimum charity donation is \u00a7{}".format(minimum)}
+        payment = self.billing.charge(sim_id, donation)
+        if not payment.get("ok"):
+            return {"ok": False, "code": "insufficient_funds", "message": "Insufficient household funds for the charity donation."}
+        result = self.audience_engine.donate_charity(record, donation)
+        if result.get("ok"):
+            self._touch()
+            self.save()
+        return result
+
+    def moderate_comment(self, sim_id, action, thread_id=""):
+        record = self.get_record(sim_id)
+        if record is None:
+            return {"ok": False, "code": "not_subscribed", "message": "Verified account required."}
+        now = int(self.adapter.get_now_ticks())
+        if action == "deescalate":
+            charisma = int(self.adapter.get_skill(sim_id, "Charisma") or 0) if hasattr(self.adapter, "get_skill") else 0
+            logic = int(self.adapter.get_skill(sim_id, "Logic") or 0) if hasattr(self.adapter, "get_skill") else 0
+            if not self.comment_engine.can_deescalate(charisma, logic):
+                return {"ok": False, "code": "skill_locked", "message": "Requires Charisma 6 or Logic 5."}
+            self.credibility_engine.adjust(record, 5, 0)
+            result = {"ok": True, "code": "deescalated", "message": "Negative sentiment converted to neutral."}
+        elif action == "clap_back":
+            mischief = int(self.adapter.get_skill(sim_id, "Mischief") or 0) if hasattr(self.adapter, "get_skill") else 0
+            charisma = int(self.adapter.get_skill(sim_id, "Charisma") or 0) if hasattr(self.adapter, "get_skill") else 0
+            result = self.comment_engine.clap_back_check(record, mischief, charisma)
+        elif action == "spin_narrative":
+            mischief = int(self.adapter.get_skill(sim_id, "Mischief") or 0) if hasattr(self.adapter, "get_skill") else 0
+            if not self.comment_engine.can_spin(mischief):
+                return {"ok": False, "code": "skill_locked", "message": "Requires Mischief 7 or a suitable career/trait."}
+            result = self.comment_engine.spin_narrative(record, False)
+        else:
+            result = self.comment_engine.silent_purge(record, now)
+        self._touch()
+        self.save()
+        return result
 
     def on_verified_post_reaction(self, author_sim_id):
         sid = str(author_sim_id)
@@ -986,7 +1127,7 @@ class VerifiedSubscriptionManager(object):
             return None
 
         follower_bonus = max(0, int(self._benefit_cfg("reaction_follower_bonus", 3)))
-        payout = max(0, int(self._benefit_cfg("reaction_payout_bonus", 10)))
+        payout = self.credibility_engine.calculate_dynamic_rpm(record, 5, 0)
         if follower_bonus > 0:
             self.adapter.add_followers(sid, follower_bonus)
         record["total_bonus_followers"] = int(record.get("total_bonus_followers", 0) or 0) + follower_bonus
@@ -1031,7 +1172,14 @@ class VerifiedSubscriptionManager(object):
         record = self.get_record(sid)
         if record is None or not self.billing.benefits_active(record, now):
             return False
-        bonus = float(self._benefit_cfg("friendship_bonus_on_add", 8.0))
+        target = self.adapter.get_sim(target_sim_id)
+        traits = []
+        if isinstance(target, dict):
+            traits = target.get("traits", []) or []
+        else:
+            for attr in ("has_trait",):
+                pass
+        bonus = self.dm_engine.add_friend_bonus(traits)
         if bonus <= 0:
             return False
         return self.adapter.add_friendship(sid, target_sim_id, bonus)
@@ -1057,6 +1205,12 @@ class VerifiedSubscriptionManager(object):
                 if self.billing.process_due(record, now):
                     changed += 1
                 if self.advance_boost_campaign(record, now):
+                    changed += 1
+                self.credibility_engine.ensure_state(record)
+                self.dm_engine.regen_battery(record, 1)
+                self.credibility_engine.check_suspension(record, now)
+                self.tiers_engine.process_contracts(record, now, int(record.get("brand_safety_score", 80)))
+                if self.audience_engine.apply_cancel_bleed(record, now, int(record.get("followers", 0) or 0)):
                     changed += 1
             except Exception:
                 continue
@@ -1104,10 +1258,23 @@ class VerifiedSubscriptionManager(object):
 
     def debug_summary(self):
         self.ensure_loaded()
+        subscriptions = []
+        for sid, record in self._subscriptions().items():
+            subscriptions.append({
+                "sim_id": sid,
+                "tier": record.get("tier", "creator_blue"),
+                "credibility": record.get("credibility_score", 65),
+                "brand_safety": record.get("brand_safety_score", 80),
+                "social_battery": record.get("social_battery", 100.0),
+                "audience": record.get("audience_segments", {}),
+                "cancelation_state": record.get("cancelation_state", "NORMAL"),
+                "contracts": record.get("contracts", []),
+            })
         return {
             "slot_id": self._loaded_slot_id,
             "subscriptions": len(self._subscriptions()),
             "verified": len(self.get_verified_sim_ids()),
             "price": self.billing.price,
             "interval_days": int(self.plan.get("billing_interval_days", 7)),
+            "accounts": subscriptions,
         }
