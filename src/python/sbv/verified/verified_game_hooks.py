@@ -192,9 +192,12 @@ def _install_verified_perk_hooks(manager):
                 before = 0
             result = original_calc_followers(self, author_sim_id)
             try:
+                after = int(self.get_current_followers_count(author_sim_id) or 0)
+                if after == before:
+                    manager.adapter.add_followers(author_sim_id, 1)
+                    after = int(self.get_current_followers_count(author_sim_id) or 0)
                 manager.ensure_loaded()
                 if manager.is_verified(author_sim_id):
-                    after = int(self.get_current_followers_count(author_sim_id) or 0)
                     manager.on_verified_follower_recount(author_sim_id, after - before)
             except Exception:
                 pass

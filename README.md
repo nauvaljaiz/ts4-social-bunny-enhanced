@@ -1,64 +1,76 @@
-# Social Bunny Verified — Additive Native Verified Tab
+# Social Bunny Verified
 
-**Social Bunny Verified** adds exactly one new tab to *The Sims 4* native Social Bunny application: **Verified**.
+Mod ini menambahkan tab **Verified** ke aplikasi Social Bunny bawaan *The Sims 4*. Tab **Feed**, **Friends**, dan **Message** tetap menggunakan UI serta fitur asli game.
 
-The original Feed, Friends, and Message tabs are preserved. The mod does not replace the Social Bunny interface, rebuild its panels, or introduce a separate social app. The new tab is compiled into a targeted override of the native `SocialMedia` Scaleform GFX and is backed by a persistent Python 3.7 subscription service.
+## Fitur
 
-## What the Verified tab does
+### Integrasi dengan Social Bunny bawaan
 
-- Shows a native-looking **Social Bunny Verified** subscription landing screen with a blue badge preview, §250 default price, per-Sim-week billing interval, eligibility, benefits, and current status.
-- Supports **Not Subscribed**, **Eligible**, **Active**, **Payment Pending**, **Payment Failed**, **Grace Period**, **Cancelled**, **Expired**, and **Suspended** states.
-- Requires explicit confirmation before any Simoleons are deducted.
-- Renews automatically every 7 Sim days using in-game time and alarms.
-- Handles failed renewals with a configurable grace period, retry payment, suspension, and preserved account data.
-- Supports cancellation, retained benefits until the paid period ends, reactivation, and auto-renew toggles.
-- Displays payment history and subscription activity.
-- Applies real benefits: blue badge in the shared Social Bunny header, feed prioritization for verified authors, and priority in the native new-contact recommendation picker.
+- Menambahkan tab **Verified** setelah tab Message, langsung di dalam panel Social Bunny.
+- Mempertahankan Feed, Friends, Message, posting, DM, daftar teman, dan pemilih kontak bawaan.
+- Menampilkan tanda centang biru di header Social Bunny selama manfaat langganan aktif.
+- Menyaring paket data UI internal agar tidak muncul sebagai posting di Feed.
+- Tidak mengganti aplikasi telepon lain atau tuning Social Bunny bawaan.
 
-No real-world payment is ever used. The only currency is Simoleons.
+### Akun dan status Verified
 
-## Deliverables
+- Membuat akun Social Bunny untuk Sim dengan ID akun dan nama pengguna yang konsisten.
+- Menampilkan status langganan, kelayakan, harga, periode tagihan, manfaat, dan aktivitas akun.
+- Menyediakan riwayat pembayaran serta pemberitahuan untuk aktivasi, perpanjangan, pembayaran gagal, masa tenggang, pembatalan, hadiah, Boost, dan pencairan pendapatan.
+- Menyimpan status per save slot dan Sim. Data tetap tersimpan saat pindah zona, berganti Sim/rumah tangga, atau memuat ulang game.
+- Menyimpan data secara atomik, memulihkan salinan cadangan jika file utama rusak, dan tidak menghapus riwayat langganan setelah berakhir.
 
-- `SocialBunnyVerified_UI.package` — one targeted resource override:
-  - `SocialMedia` Scaleform GFX
-  - Type `0x62ECC59A`, Group `0x00000000`, Instance `0x8ABB350F01880C64`
-- `SocialBunnyVerified.ts4script` — Python 3.7 backend (`sbv.*` namespace)
+### Langganan dan pembayaran
 
-The package does **not** override `widgetlist.xml`, shared UI libraries, textures, or native tuning.
+- Langganan hanya tersedia untuk Sim yang dikendalikan pemain dan memiliki rumah tangga dengan dana yang dapat diakses.
+- Meminta konfirmasi sebelum menarik Simoleon. Pembayaran gagal atau dana tidak cukup tidak akan mengaktifkan langganan.
+- Paket bawaan seharga **§250 per 7 hari Sim**; harga dan periode dapat diubah lewat konfigurasi.
+- Mendukung perpanjangan otomatis, pengingat, riwayat pembayaran, coba ulang pembayaran, masa tenggang, penangguhan, pembatalan, dan aktivasi kembali.
+- Manfaat tetap berlaku selama sisa periode berbayar setelah langganan dibatalkan atau perpanjangan otomatis dimatikan.
+- Jika pembayaran perpanjangan gagal, langganan memasuki masa tenggang. Langganan dapat ditangguhkan jika pembayaran tidak diselesaikan.
+- Tidak menggunakan pembayaran uang sungguhan; semua transaksi memakai Simoleon.
 
-## Why the original tabs stay vanilla
+Status yang ditampilkan: **Not Subscribed**, **Eligible**, **Active**, **Payment Pending**, **Payment Failed**, **Grace Period**, **Cancelled**, **Expired**, dan **Suspended**.
 
-The implementation starts from the installed `SocialMedia` GFX and restores the original decompiled ActionScript for every native class. Only `SocialMediaPanel.as` is modified. The other 30 native ActionScript files remain byte-for-byte identical to the decompiled vanilla sources.
+### Manfaat untuk pelanggan aktif
 
-The Verified tab reuses:
-- the native `FriendsTabTextButton` tab-button component,
-- the native `SocialMediaFeedTabPanel` content-panel MovieClip as its backdrop,
-- the native `PostButton_Tag` button skin,
-- the native `$TextFont` / `$HeadlineFont` fonts.
+- **Badge biru** di samping nama Sim di Social Bunny.
+- **Prioritas Feed:** posting Sim Verified diprioritaskan di Feed, hingga batas prioritas yang dikonfigurasi.
+- **Prioritas rekomendasi teman:** Sim Verified dapat diprioritaskan oleh pemilih kontak baru bawaan.
+- **Pertumbuhan followers:** bonus awal **+75 followers** saat berlangganan, bonus dari posting dan reaksi, serta pengali pertumbuhan algoritma bawaan **2,5×**. Jika perhitungan native tidak menaikkan jumlah followers, mod memberikan kenaikan minimum agar jumlahnya tidak mandek.
+- **Bonus posting:** posting publik bawaan dapat memberi **+12 followers**, pendapatan kreator, Fame, dan reaksi NPC otomatis.
+- **Bonus reaksi:** reaksi pertama Sim lain pada posting Verified dapat memberi **+3 followers** dan pendapatan kreator.
+- **Creator Spotlight / Boost Reach:** kampanye selama **4 jam Sim** dengan hasil followers, reaksi, dan pendapatan dalam gelombang per jam. Tersedia kembali setelah cooldown bawaan **24 jam Sim**.
+- **Pendapatan kreator:** pendapatan dari posting, reaksi, dan kampanye Boost dikumpulkan sebagai saldo tertunda; gunakan **Claim** untuk memindahkannya ke dana rumah tangga.
+- **Networking:** menambahkan teman Social Bunny memberi bonus awal hubungan pertemanan.
 
-## Build
+Nilai manfaat selain harga dan periode paket juga tersedia di konfigurasi `benefits` (lihat contoh di bawah).
 
-```powershell
-python tools\build_packages.py
-# Build and copy the package + script archive to Documents\Electronic Arts\The Sims 4\Mods:
-python tools\build_packages.py --deploy
-```
+## Instalasi
 
-## Tests
+1. Pastikan *High School Years* terpasang, karena aplikasi Social Bunny bawaan diperkenalkan oleh paket tersebut.
+2. Salin kedua file dari folder `dist` ke `Documents\Electronic Arts\The Sims 4\Mods\`:
+   - `SocialBunnyVerified_UI.package`
+   - `SocialBunnyVerified.ts4script`
+3. Jangan meletakkan file `.ts4script` lebih dari satu subfolder di dalam folder Mods.
+4. Aktifkan **Enable Custom Content and Mods** dan **Script Mods Allowed** di *Game Options → Other*.
+5. Jika memperbarui dari versi lama mod, hapus `localthumbcache.package`, lalu buka Social Bunny dari ponsel Sim. Tab **Verified** akan muncul setelah Message.
 
-```powershell
-& "C:\Users\nauval jaiz\Documents\the-sims-mods\simstagram\tools\python37\python.exe" tests\run_all_tests.py
-```
+## Menggunakan tab Verified
 
-The suite covers subscription charging, duplicate prevention, renewal success/failure, grace, suspension, cancellation, reactivation, persistence and migration, all status labels, state-packet encoding, feed/contact priority, and artifact validation.
+1. Buka **Social → Open Social Bunny** dari ponsel Sim.
+2. Pilih tab **Verified** untuk melihat harga, kelayakan, status, dan manfaat.
+3. Pilih **Subscribe**, periksa konfirmasi, lalu konfirmasikan pembayaran Simoleon.
+4. Gunakan tombol pengelolaan untuk mengatur perpanjangan otomatis, membatalkan atau mengaktifkan kembali langganan, mencoba ulang pembayaran, menjalankan Boost, dan mengklaim pendapatan.
+5. Periksa riwayat pembayaran dan pemberitahuan di bagian bawah tab.
 
-## Configuration
+## Konfigurasi
 
-The plan is configurable without editing Python. Create:
+Buat file berikut jika ingin mengubah nilai bawaan:
 
 `Documents\Electronic Arts\The Sims 4\Mods\SocialBunnyVerified_Data\verified_config.json`
 
-Example:
+Contoh mengubah harga, periode pembayaran, dan beberapa manfaat:
 
 ```json
 {
@@ -68,20 +80,73 @@ Example:
     "grace_period_days": 2,
     "retry_interval_hours": 12,
     "renewal_reminder_hours": 24
+  },
+  "benefits": {
+    "feed_priority_limit": 25,
+    "contact_priority_enabled": true,
+    "welcome_follower_bonus": 75,
+    "follower_growth_multiplier": 2.5,
+    "min_daily_follower_gain": 20,
+    "post_follower_bonus": 12,
+    "post_payout_base": 35,
+    "reaction_payout_bonus": 10,
+    "reaction_follower_bonus": 3,
+    "fame_per_post": 12,
+    "boost_duration_hours": 4,
+    "boost_cooldown_hours": 24,
+    "boost_follower_min": 45,
+    "boost_follower_max": 110,
+    "boost_payout_base": 60,
+    "friendship_bonus_on_add": 8.0
   }
 }
 ```
 
-The price and interval are read from this file; default values exist only in `verified_config.py`.
+Hapus properti yang tidak ingin diubah; nilainya akan memakai default mod. Perubahan konfigurasi dibaca ketika mod dimuat.
 
-## Project layout
+## Perintah opsional
 
-- `src/gfx/original/` — untouched original GFX backup
-- `src/gfx/decompiled/` — FFDec reference decompilation
-- `src/gfx/scripts/` — editable ActionScript (only `SocialMediaPanel.as` differs from vanilla)
-- `src/gfx/compiled/` — compiled replacement GFX
-- `src/python/sbv/verified/` — subscription, billing, eligibility, notifications, persistence, UI bridge, and hooks
-- `tools/` — DBPF writer, asset encoder, game audit, and reproducible builder
-- `tests/` — Python 3.7 test suite
-- `docs/` — architecture, resource inventory, override plan, limitations, and test report
-- `dist/` — installable UI package and `.ts4script`
+Buka konsol cheat game untuk menggunakan:
+
+- `sbv.verified_status` — menampilkan save slot aktif dan jumlah akun langganan/Verified.
+- `sbv.verified_tick` — menjalankan pemeriksaan tagihan dan kampanye yang tertunda.
+- `sbv.verified_reload` — memuat ulang data Verified untuk save slot aktif.
+
+## Kompatibilitas dan batasan
+
+- Mod hanya mengganti satu resource GFX SocialMedia. Mod UI lain yang mengganti resource GFX yang sama dapat berkonflik.
+- `widgetlist.xml`, library UI bersama, tekstur Social Bunny, tuning native, dan aplikasi telepon lain tidak diganti.
+- Feed, Friends, Message, posting, DM, dan pemilih native tetap berasal dari game.
+- Tagihan menggunakan waktu Sim. Setelah lama tidak bermain, mod memproses tagihan yang jatuh tempo satu periode saat game berjalan kembali; mod tidak menagih semua periode yang terlewat sekaligus.
+- Perubahan UI Scaleform perlu diuji di dalam game. Tes otomatis mencakup logika langganan, persistensi, paket, dan komunikasi UI.
+
+## Build dan tes pengembang
+
+Bangun package dan arsip script:
+
+```powershell
+python tools\build_packages.py
+```
+
+Bangun sekaligus salin file hasil build ke folder Mods:
+
+```powershell
+python tools\build_packages.py --deploy
+```
+
+Jalankan tes (memerlukan Python 3.7 yang sesuai dengan runtime game):
+
+```powershell
+& "C:\Users\nauval jaiz\Documents\the-sims-mods\simstagram\tools\python37\python.exe" tests\run_all_tests.py
+```
+
+## Isi folder proyek
+
+- `src/gfx/original/` — salinan GFX asli untuk proses build.
+- `src/gfx/decompiled/` — referensi ActionScript hasil dekompilasi.
+- `src/gfx/scripts/` — ActionScript yang digunakan untuk membangun UI.
+- `src/python/sbv/verified/` — layanan akun, langganan, pembayaran, manfaat, persistensi, dan bridge UI.
+- `tools/` — alat audit resource dan build package.
+- `tests/` — tes Python dan validasi package.
+- `docs/` — dokumentasi arsitektur, kompatibilitas, batasan, dan laporan tes.
+- `dist/` — file mod siap dipasang.

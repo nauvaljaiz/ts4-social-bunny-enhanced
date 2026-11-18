@@ -67,6 +67,8 @@ Defensive wrappers around the real APIs:
 - Saves on game save and native Social Media save.
 - Runs the hourly billing alarm.
 - Prioritizes active Verified subscribers in the native possible-contact picker.
+- Preserves dirty subscription data before any reload or save-slot switch.
+- Adds one native follower when the game's follower recount completes without increasing the count, for verified and non-verified Sims alike.
 
 ## Data Model
 

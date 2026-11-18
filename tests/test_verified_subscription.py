@@ -5,7 +5,9 @@ import json
 import os
 import sys
 import tempfile
+import types
 import unittest
+from unittest import mock
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "src", "python"))
@@ -289,6 +291,63 @@ class TestVerifiedSubscription(VerifiedSubscriptionTestBase):
         self.assertEqual(migrated["schema_version"], 2)
         self.assertIsInstance(migrated["subscriptions"], dict)
         self.assertEqual(migrated["subscriptions"]["101"]["sim_id"], "101")
+
+    def test_reload_and_slot_switch_preserve_unsaved_verified_state(self):
+        self.assertTrue(self.subscribe()["ok"])
+        record = self.manager.get_record(101)
+        record["last_failure_reason"] = "preserve across zone load"
+        self.manager._touch()
+
+        self.manager.reload()
+        self.assertEqual(self.manager.get_record(101)["last_failure_reason"], "preserve across zone load")
+
+        record = self.manager.get_record(101)
+        record["last_failure_reason"] = "preserve across save-slot switch"
+        self.manager._touch()
+        self.slot_id = 4
+        self.manager.ensure_loaded()
+        self.assertIsNone(self.manager.get_record(101))
+
+        slot_three = VerifiedPersistence(self.tmp)
+        saved = slot_three.load_slot(3)
+        self.assertEqual(
+            saved["subscriptions"]["101"]["last_failure_reason"],
+            "preserve across save-slot switch",
+        )
+
+    def test_native_follower_recount_gives_all_sims_a_minimum_gain(self):
+        from sbv.verified.verified_game_hooks import _install_verified_perk_hooks
+
+        class FakePostType(object):
+            DEFAULT = 0
+            PUBLIC_POST = 4
+
+        class FakeSocialMediaService(object):
+            def calculate_social_media_followers(self, author_sim_id):
+                return "native-result"
+
+            def get_current_followers_count(self, sim_id):
+                return self.manager.adapter.get_followers(sim_id)
+
+            def __init__(self, manager):
+                self.manager = manager
+
+        social_media_module = types.ModuleType("social_media")
+        social_media_module.SocialMediaPostType = FakePostType
+        service_module = types.ModuleType("social_media.social_media_service")
+        service_module.SocialMediaService = FakeSocialMediaService
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "social_media": social_media_module,
+                "social_media.social_media_service": service_module,
+            },
+        ):
+            _install_verified_perk_hooks(self.manager)
+            native_service = FakeSocialMediaService(self.manager)
+            self.assertEqual(native_service.calculate_social_media_followers(102), "native-result")
+
+        self.assertEqual(self.followers["102"], 1)
 
     def test_feed_priority_and_contact_priority_are_real(self):
         self.assertTrue(self.subscribe()["ok"])

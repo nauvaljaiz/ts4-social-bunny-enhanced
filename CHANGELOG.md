@@ -1,5 +1,10 @@
 # Changelog — Social Bunny Verified
 
+## Unreleased
+
+- Preserve unsaved Verified subscription changes when loading a zone or switching save slots.
+- Ensure native Social Bunny follower recounts grant at least one follower when the game's calculation produces no increase.
+
 ## v2.0.0 — Additive Verified tab
 
 - Restored all vanilla Social Bunny ActionScript except `SocialMediaPanel.as`.

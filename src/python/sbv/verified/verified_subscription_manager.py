@@ -36,14 +36,15 @@ class VerifiedSubscriptionManager(object):
         slot_id = int(force_slot_id) if force_slot_id is not None else int(self.adapter.get_slot_id())
         if self._payload is not None and self._loaded_slot_id == slot_id and not force:
             return
+        if self._payload is not None and self.persistence.is_dirty():
+            if not self.save():
+                raise IOError("Unable to save Verified data before loading another state.")
         self._payload = self.persistence.load_slot(slot_id)
         self._loaded_slot_id = slot_id
         self.accounts.bind(self._payload)
         self.notifications.bind(self._payload)
 
     def reload(self):
-        self._payload = None
-        self._loaded_slot_id = None
         self.ensure_loaded(force=True)
 
     def save(self):
