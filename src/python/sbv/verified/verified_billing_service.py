@@ -51,7 +51,7 @@ class VerifiedBillingService(object):
 
     @property
     def retry_ticks(self):
-        return self._adapter.ticks_from_hours(self._plan.get("retry_interval_hours", 12))
+        return max(1, self._adapter.ticks_from_hours(self._plan.get("retry_interval_hours", 12)))
 
     @property
     def reminder_ticks(self):
@@ -186,7 +186,9 @@ class VerifiedBillingService(object):
         record["last_failure_at"] = 0
         record["last_failure_reason"] = ""
         record["retry_count"] = 0
+        record["last_manual_retry_at"] = 0
         record["reminder_sent_for"] = 0
+        record["suspension_reason"] = ""
 
     def activate(self, record, now_ticks):
         self.apply_new_period(record, now_ticks)
@@ -224,6 +226,7 @@ class VerifiedBillingService(object):
         grace_end = int(record.get("grace_period_end", 0) or 0)
 
         if status == "suspended":
+            record["suspension_reason"] = "payment"
             record["next_billing_at"] = int(now_ticks + self.retry_ticks)
             self._notifications.push(
                 record["sim_id"],
@@ -269,6 +272,7 @@ class VerifiedBillingService(object):
 
     def suspend(self, record, now_ticks, reason=""):
         record["status"] = "suspended"
+        record["suspension_reason"] = "payment"
         record["auto_renew"] = True
         record["grace_period_end"] = 0
         record["next_billing_at"] = int(now_ticks + self.retry_ticks)
@@ -309,8 +313,10 @@ class VerifiedBillingService(object):
         if not isinstance(record, dict):
             return False
         status = str(record.get("status", "not_subscribed"))
-        if status in ("active", "payment_pending"):
+        if status == "active":
             return True
+        if status == "payment_pending":
+            return False
         if status in ("payment_failed", "grace_period"):
             if int(record.get("last_successful_payment", 0) or 0) <= 0:
                 return False
@@ -326,7 +332,10 @@ class VerifiedBillingService(object):
         status = str(record.get("status", "not_subscribed"))
         changed = False
 
-        if status in ("active", "payment_pending"):
+        if status == "payment_pending":
+            return False
+
+        if status == "active":
             next_billing = int(record.get("next_billing_at", 0) or 0)
             if next_billing > 0 and now_ticks >= next_billing:
                 if bool(record.get("auto_renew", True)):
@@ -354,6 +363,9 @@ class VerifiedBillingService(object):
             if grace_end > 0 and now_ticks >= grace_end:
                 self.suspend(record, now_ticks, "Grace period ended")
                 return True
+            last_manual_retry = int(record.get("last_manual_retry_at", 0) or 0)
+            if last_manual_retry > 0 and now_ticks < last_manual_retry + self.retry_ticks:
+                return False
             next_billing = int(record.get("next_billing_at", 0) or 0)
             if next_billing > 0 and now_ticks >= next_billing:
                 self.attempt_renewal(record, now_ticks, "Grace-period retry")

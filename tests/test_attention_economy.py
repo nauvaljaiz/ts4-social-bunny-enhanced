@@ -33,6 +33,14 @@ class AttentionEconomyTests(unittest.TestCase):
         engine.record_post(record, 300)
         self.assertEqual(record["credibility_score"], 61)
 
+    def test_suspension_applies_once(self):
+        engine = CredibilityEngine({})
+        record = {"status": "active", "credibility_score": 20, "active_strikes": 0}
+        self.assertTrue(engine.check_suspension(record, 100))
+        self.assertEqual(record["status"], "suspended")
+        self.assertFalse(engine.check_suspension(record, 200))
+        self.assertEqual(record["active_strikes"], 1)
+
     def test_dm_diminishing_returns_and_battery(self):
         engine = DMInterceptorEngine({})
         record = {"social_battery": 100.0, "dm_pair_history": {}, "credibility_score": 65}
@@ -61,6 +69,22 @@ class AttentionEconomyTests(unittest.TestCase):
         self.assertGreater(record["followers"], 0)
         self.assertLess(record["followers"], 1000)
         self.assertIn(record["cancelation_state"], ("CONTROVERSY_WATCH", "CANCEL_WAVE"))
+
+    def test_ratio_losses_expire_after_24_hours(self):
+        engine = CommentWarfareEngine({})
+        record = {"followers": 1000, "credibility_score": 65, "brand_safety_score": 80}
+        engine.evaluate_ratio(record, 100, 50, True, 100)
+        engine.evaluate_ratio(record, 100, 50, True, 100 + 24 * 1500 + 1)
+        self.assertEqual(record["cancelation_state"], "CONTROVERSY_WATCH")
+        self.assertEqual(len(record["ratio_losses_24h"]), 1)
+
+    def test_post_spam_threshold_and_niche_drift(self):
+        engine = CredibilityEngine({})
+        record = {"credibility_score": 65, "brand_safety_score": 80, "post_times_6h": []}
+        for tick in (100, 200, 300):
+            engine.record_post(record, tick)
+        self.assertLess(record["credibility_score"], 65)
+        self.assertLess(record["brand_safety_score"], 80)
 
 
 if __name__ == "__main__":

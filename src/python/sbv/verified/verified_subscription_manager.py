@@ -127,6 +127,7 @@ class VerifiedSubscriptionManager(object):
             "last_failure_at": 0,
             "last_failure_reason": "",
             "retry_count": 0,
+            "last_manual_retry_at": 0,
             "reminder_sent_for": 0,
             "pending_payout": 0,
             "total_earnings": 0,
@@ -143,6 +144,12 @@ class VerifiedSubscriptionManager(object):
             "boost_reactions_gained": 0,
             "welcome_bonus_granted_at": 0,
             "payment_history": [],
+            "last_system_tick": 0,
+            "system_tick_initialized": False,
+            "last_post_at": 0,
+            "daily_creator_earnings": 0,
+            "creator_earnings_day": -1,
+            "last_follower_bonus_day": -1,
             "tier": "creator_blue",
             "contracts": [],
             "contract_lock_until": 0,
@@ -187,23 +194,30 @@ class VerifiedSubscriptionManager(object):
         if not items:
             return items
         verified = set(self.get_verified_sim_ids())
-        if not verified:
+        viewer = "" if viewer_sim_id is None else str(viewer_sim_id)
+        if not verified and not viewer:
             return items
         limit = max(0, int(self.config.get("benefits", {}).get("feed_priority_limit", 25)))
-        if limit <= 0:
-            return items
-        verified_indices = [
-            index
-            for index, item in enumerate(items)
-            if str(getattr(item, "author_sim_id", "")) in verified
-        ]
-        selected = set(verified_indices[-limit:])
-        priority = [item for index, item in enumerate(items) if index in selected]
-        rest = [item for index, item in enumerate(items) if index not in selected]
-        # SocialMediaFeedTabPanel reverses its input before populating the list.
-        # Returning [unverified..., verified...] therefore places verified posts
-        # at the top of the visible feed while preserving chronology in each group.
-        return rest + priority
+        tagged = []
+        verified_priority = []
+        rest = []
+        for item in items:
+            author = str(getattr(item, "author_sim_id", "") or "")
+            target = str(getattr(item, "target_sim_id", "") or "")
+            if viewer and (author == viewer or target == viewer):
+                tagged.append(item)
+            elif author in verified:
+                verified_priority.append(item)
+            else:
+                rest.append(item)
+        selected_verified = verified_priority[-limit:] if limit > 0 else []
+        selected_ids = set(id(item) for item in selected_verified)
+        for item in list(verified_priority):
+            if id(item) not in selected_ids:
+                rest.append(item)
+        # The native AS panel reverses this list before rendering.
+        # Putting personal/tagged and verified items last makes them appear first.
+        return rest + selected_verified + tagged
 
     def prioritize_contacts(self, candidates):
         if not candidates:
@@ -234,7 +248,18 @@ class VerifiedSubscriptionManager(object):
         record = self.get_record(sid)
 
         if record is not None:
-            changed = self.billing.process_due(record, now)
+            reputation_suspended = (
+                str(record.get("status", "")) == "suspended"
+                and self.credibility_engine.get_suspension_reason(record, now)
+                in ("credibility", "inactivity")
+            )
+            changed = False
+            if reputation_suspended:
+                changed = self.credibility_engine.try_reinstate(record, now)
+                if changed and record.get("status") == "active":
+                    self.billing.process_due(record, now)
+            else:
+                changed = self.billing.process_due(record, now)
             if self.advance_boost_campaign(record, now):
                 changed = True
             if changed:
@@ -288,6 +313,15 @@ class VerifiedSubscriptionManager(object):
                 age = 0
             if age > self.adapter.ticks_from_hours(1):
                 last_result = None
+        if (
+            last_result is not None
+            and status == "suspended"
+            and subscription.get("suspension_reason") in ("credibility", "inactivity")
+            and last_result.get("code") == "payment_succeeded"
+        ):
+            last_result = dict(last_result)
+            last_result["code"] = "payment_succeeded_reputation_suspended"
+            last_result["message"] = subscription["status_detail"]
 
         pr_record = self.tiers_engine.ensure_state(record) if record is not None else {}
         if record is not None:
@@ -295,8 +329,15 @@ class VerifiedSubscriptionManager(object):
             self.dm_engine.ensure_state(record)
             self.audience_engine.ensure_state(record)
             self.comment_engine.ensure_state(record)
+            tier_key = str(record.get("tier", "creator_blue"))
+            tier_labels = {
+                "creator_blue": "Blue",
+                "partner_gold": "Gold",
+                "mogul_obsidian": "Obsidian",
+            }
             pr_studio = {
                 "tier": record.get("tier", "creator_blue"),
+                "tier_label": tier_labels.get(tier_key, "No Tier"),
                 "credibility": int(record.get("credibility_score", 65)),
                 "brand_safety": int(record.get("brand_safety_score", 80)),
                 "social_battery": float(record.get("social_battery", 100.0)),
@@ -311,6 +352,7 @@ class VerifiedSubscriptionManager(object):
         else:
             pr_studio = {
                 "tier": "none",
+                "tier_label": "No Tier",
                 "credibility": 65,
                 "brand_safety": 80,
                 "social_battery": 100.0,
@@ -326,6 +368,7 @@ class VerifiedSubscriptionManager(object):
             "version": 2,
             "kind": "social_bunny_verified",
             "now": now,
+            "owner_sim_id": sid,
             "account": {
                 "sim_id": sid,
                 "account_id": account["account_id"],
@@ -357,6 +400,24 @@ class VerifiedSubscriptionManager(object):
 
     def _benefit_cfg(self, key, default):
         return self.config.get("benefits", {}).get(key, default)
+
+    def _accrue_creator_payout(self, record, amount, now):
+        amount = max(0, int(amount))
+        if amount <= 0:
+            return 0
+        day_ticks = max(1, int(self.adapter.ticks_per_day()))
+        current_day = int(now // day_ticks)
+        if int(record.get("creator_earnings_day", -1)) != current_day:
+            record["creator_earnings_day"] = current_day
+            record["daily_creator_earnings"] = 0
+        earned = max(0, int(record.get("daily_creator_earnings", 0) or 0))
+        cap = int(self.credibility_engine.daily_payout_cap)
+        credited = min(amount, max(0, cap - earned))
+        if credited:
+            record["daily_creator_earnings"] = earned + credited
+            record["pending_payout"] = int(record.get("pending_payout", 0) or 0) + credited
+            record["total_earnings"] = int(record.get("total_earnings", 0) or 0) + credited
+        return credited
 
     def _boost_duration_hours(self):
         return max(1, int(self._benefit_cfg("boost_duration_hours", 4)))
@@ -486,6 +547,9 @@ class VerifiedSubscriptionManager(object):
             "subscription_id": subscription_id,
             "status": status,
             "status_label": label,
+            "suspension_reason": self.credibility_engine.get_suspension_reason(record, now)
+            if record is not None
+            else "",
             "status_detail": detail,
             "benefits_active": bool(record is not None and self.billing.benefits_active(record, now)),
             "auto_renew": auto_renew,
@@ -502,6 +566,12 @@ class VerifiedSubscriptionManager(object):
     def _build_permissions(self, status, record, eligibility, can_afford, now, perks=None):
         period_end = int(record.get("current_period_end", 0) or 0) if record else 0
         benefits_active = bool(record is not None and self.billing.benefits_active(record, now))
+        retry_available_at = self._manual_retry_available_at(record)
+        suspension_reason = (
+            self.credibility_engine.get_suspension_reason(record, now)
+            if record is not None and status == "suspended"
+            else ""
+        )
         pending_payout = int((perks or {}).get("pending_payout", record.get("pending_payout", 0) if record else 0) or 0)
         boost_ready = bool((perks or {}).get("boost_ready", False))
         boost_active = bool((perks or {}).get("boost_active", False))
@@ -514,12 +584,23 @@ class VerifiedSubscriptionManager(object):
             "can_cancel": status in ("active", "payment_pending", "payment_failed", "grace_period"),
             "can_reactivate": bool(status == "cancelled" and now < period_end),
             "can_retry_payment": bool(
-                can_afford and status in ("payment_failed", "grace_period", "suspended")
+                can_afford
+                and (retry_available_at <= 0 or now >= retry_available_at)
+                and (
+                    status in ("payment_failed", "grace_period")
+                    or (status == "suspended" and suspension_reason == "payment")
+                )
             ),
             "can_toggle_auto_renew": status == "active",
             "can_boost_post": bool(benefits_active and boost_ready and not boost_active),
             "can_claim_payout": bool(pending_payout > 0),
         }
+
+    def _manual_retry_available_at(self, record):
+        if record is None:
+            return 0
+        last_retry = int(record.get("last_manual_retry_at", 0) or 0)
+        return last_retry + self.billing.retry_ticks if last_retry > 0 else 0
 
     def _status_detail(self, status, record, now, eligibility, can_afford=True):
         funds_hint = " Add Simoleons to household funds, then use Refresh."
@@ -528,7 +609,12 @@ class VerifiedSubscriptionManager(object):
                 return "Benefits are active, but automatic renewal is off. The subscription expires at the end of this period."
             return "Your subscription is active and all Verified benefits are available."
         if status == "payment_pending":
-            return "A Simoleon payment is currently being processed."
+            return "Payment confirmation is pending. No new charge will be attempted to avoid a duplicate payment."
+        retry_available_at = self._manual_retry_available_at(record)
+        if retry_available_at > now:
+            return (
+                "A payment retry was just attempted. To prevent duplicate charges, try again after {}."
+            ).format(self.adapter.format_sim_time(retry_available_at))
         if status == "payment_failed":
             if record is not None and int(record.get("last_successful_payment", 0) or 0) <= 0:
                 message = "The subscription payment failed. No Simoleons were deducted."
@@ -552,6 +638,34 @@ class VerifiedSubscriptionManager(object):
         if status == "expired":
             return "This subscription has expired. Account data and payment history are preserved."
         if status == "suspended":
+            reason = self.credibility_engine.get_suspension_reason(record or {}, now)
+            if reason == "credibility":
+                score = int(record.get("credibility_score", 0) or 0)
+                cooldown = int(record.get("reapplication_cooldown_until", 0) or 0)
+                cooldown_text = (
+                    " after {}".format(self.adapter.format_sim_time(cooldown))
+                    if cooldown > now
+                    else ""
+                )
+                return (
+                    "Suspended for low credibility ({}/100; needs {}). Post steadily, no more than {} "
+                    "times per {} Sim hours; reinstatement is available{}."
+                ).format(
+                    score,
+                    self.credibility_engine.revocation_threshold,
+                    self.credibility_engine.max_posts_per_window,
+                    self.credibility_engine.spam_window_hours,
+                    cooldown_text,
+                )
+            if reason == "inactivity":
+                cooldown = int(record.get("reapplication_cooldown_until", 0) or 0)
+                cooldown_text = (
+                    " Reinstatement is available after {}."
+                    .format(self.adapter.format_sim_time(cooldown))
+                    if cooldown > now
+                    else " Resume posting steadily to restore eligibility."
+                )
+                return "Suspended for inactivity." + cooldown_text
             if not can_afford:
                 return "Benefits are suspended. Household funds are below the subscription price." + funds_hint
             return "Benefits are suspended. Retry the outstanding payment to restore the blue badge."
@@ -564,14 +678,25 @@ class VerifiedSubscriptionManager(object):
     def handle_action(self, sim_id, action, arg1="", arg2=""):
         self.ensure_loaded()
         now = self.adapter.get_now_ticks()
+        action = str(action or "").strip().lower()
         record = self.get_record(sim_id)
         if record is not None:
-            changed = self.billing.process_due(record, now)
+            reputation_suspended = (
+                str(record.get("status", "")) == "suspended"
+                and self.credibility_engine.get_suspension_reason(record, now)
+                in ("credibility", "inactivity")
+            )
+            changed = False
+            if reputation_suspended:
+                changed = self.credibility_engine.try_reinstate(record, now)
+                if changed and record.get("status") == "active":
+                    self.billing.process_due(record, now)
+            elif action != "retry_payment":
+                changed = self.billing.process_due(record, now)
             if self.advance_boost_campaign(record, now):
                 changed = True
             if changed:
                 self.save()
-        action = str(action or "").strip().lower()
         if action == "subscribe":
             result = self.subscribe(sim_id)
         elif action == "cancel":
@@ -608,7 +733,13 @@ class VerifiedSubscriptionManager(object):
         record = self.get_record(sim_id)
         now = self.adapter.get_now_ticks()
         if record is not None:
-            self.billing.process_due(record, now)
+            reputation_suspended = (
+                str(record.get("status", "")) == "suspended"
+                and self.credibility_engine.get_suspension_reason(record, now)
+                in ("credibility", "inactivity")
+            )
+            if not reputation_suspended:
+                self.billing.process_due(record, now)
             self.save()
         return {"ok": True, "code": "refreshed", "message": ""}
 
@@ -671,6 +802,7 @@ class VerifiedSubscriptionManager(object):
             return self._fail(sid, payment.get("code", "payment_failed"), payment.get("message", "Payment failed."), now)
 
         self.billing.activate(record, now)
+        record["last_post_at"] = int(now)
         welcome_bonus = self._grant_welcome_perk(record, sid, now)
         self.notifications.mark_all_read(sid)
         bonus_note = " (+{} spotlight followers!)".format(welcome_bonus) if welcome_bonus > 0 else ""
@@ -791,8 +923,28 @@ class VerifiedSubscriptionManager(object):
         if record is None:
             return self._fail(sid, "not_subscribed", "No subscription exists for this Sim.", now)
         status = str(record.get("status", "not_subscribed"))
+        if status == "suspended" and self.credibility_engine.get_suspension_reason(record, now) in (
+            "credibility",
+            "inactivity",
+        ):
+            return self._fail(
+                sid,
+                "reputation_suspension",
+                self._status_detail(status, record, now, {}, self.billing.can_afford(sid)),
+                now,
+            )
         if status not in ("payment_failed", "grace_period", "suspended"):
             return self._fail(sid, "no_payment_due", "There is no failed payment to retry.", now)
+        retry_available_at = self._manual_retry_available_at(record)
+        if retry_available_at > now:
+            return self._fail(
+                sid,
+                "retry_cooldown",
+                "A payment retry was just attempted. To prevent duplicate charges, try again after {}.".format(
+                    self.adapter.format_sim_time(retry_available_at)
+                ),
+                now,
+            )
         if not self.billing.can_afford(sid):
             return self._fail(
                 sid,
@@ -803,14 +955,19 @@ class VerifiedSubscriptionManager(object):
 
         was_suspended = status == "suspended"
         never_activated = int(record.get("last_successful_payment", 0) or 0) <= 0
+        record["last_manual_retry_at"] = int(now)
         record["status"] = "payment_pending"
         payment = self.billing.charge(sid, self.billing.price)
         if not payment.get("ok"):
             if was_suspended:
                 self.billing.append_payment(record, now, self.billing.price, False, payment.get("message", ""))
                 record["status"] = "suspended"
+                record["suspension_reason"] = "payment"
                 record["grace_period_end"] = 0
                 record["next_billing_at"] = int(now + self.billing.retry_ticks)
+                record["last_failure_at"] = int(now)
+                record["last_failure_reason"] = str(payment.get("message", "Payment failed."))
+                record["retry_count"] = int(record.get("retry_count", 0)) + 1
             elif never_activated:
                 self.billing.append_payment(record, now, self.billing.price, False, payment.get("message", ""))
                 record["status"] = "payment_failed"
@@ -824,24 +981,45 @@ class VerifiedSubscriptionManager(object):
             return self._fail(sid, payment.get("code", "payment_failed"), payment.get("message", "Payment failed."), now)
 
         self.billing.apply_new_period(record, now)
+        record["last_post_at"] = int(now)
         self.billing.append_payment(record, now, self.billing.price, True, "Manual retry")
-        welcome_bonus = self._grant_welcome_perk(record, sid, now)
+        self.credibility_engine.check_suspension(record, now)
+        reputation_suspended = (
+            str(record.get("status", "")) == "suspended"
+            and self.credibility_engine.get_suspension_reason(record, now)
+            in ("credibility", "inactivity")
+        )
+        welcome_bonus = 0 if reputation_suspended else self._grant_welcome_perk(record, sid, now)
+        result_code = "payment_succeeded_reputation_suspended" if reputation_suspended else "payment_succeeded"
+        result_message = (
+            "Payment received, but the account remains suspended for low credibility. No further payment is due."
+            if reputation_suspended
+            else "Payment received. Verified benefits restored."
+        )
         self._notifications_push(
             sid,
             "payment_succeeded",
-            "Payment received. Social Bunny Verified benefits have been restored.",
+            result_message,
             now,
         )
         bonus_note = " (+{} followers!)".format(welcome_bonus) if welcome_bonus > 0 else ""
         self.notifications.set_last_result(
             sid,
             True,
-            "Payment received. Verified benefits restored{}.".format(bonus_note),
-            "payment_succeeded",
+            result_message + bonus_note,
+            result_code,
             "success",
             now,
         )
-        return {"ok": True, "code": "payment_succeeded", "message": "Payment completed."}
+        self._touch()
+        self.save()
+        snapshot = self.build_snapshot(sid)
+        return {
+            "ok": True,
+            "code": result_code,
+            "message": "Payment completed.",
+            "snapshot": snapshot,
+        }
 
     # --- Active Verified Perks & Gameplay Hooks ----------------------
 
@@ -913,11 +1091,10 @@ class VerifiedSubscriptionManager(object):
 
         record["boost_ticks_done"] = elapsed_waves
         record["boost_followers_gained"] = int(record.get("boost_followers_gained", 0) or 0) + total_new_followers
-        record["boost_payout_gained"] = int(record.get("boost_payout_gained", 0) or 0) + total_new_payout
+        credited_payout = self._accrue_creator_payout(record, total_new_payout, now)
+        record["boost_payout_gained"] = int(record.get("boost_payout_gained", 0) or 0) + credited_payout
         record["boost_reactions_gained"] = int(record.get("boost_reactions_gained", 0) or 0) + total_new_reactions
         record["total_bonus_followers"] = int(record.get("total_bonus_followers", 0) or 0) + total_new_followers
-        record["pending_payout"] = int(record.get("pending_payout", 0) or 0) + total_new_payout
-        record["total_earnings"] = int(record.get("total_earnings", 0) or 0) + total_new_payout
 
         if elapsed_waves >= total_waves:
             end_at = int(record.get("boost_ends_at", now) or now)
@@ -1023,7 +1200,84 @@ class VerifiedSubscriptionManager(object):
         self.notifications.set_last_result(sid, True, msg, "payout_claimed", "success", now)
         return {"ok": True, "code": "payout_claimed", "message": msg, "amount": amount}
 
-    def on_verified_post_created(self, sim_id):
+    def on_verified_post_attempt(self, sim_id):
+        sid = str(sim_id)
+        self.ensure_loaded()
+        now = int(self.adapter.get_now_ticks())
+        record = self.get_record(sid)
+        if record is None:
+            return {"allowed": True, "verified": False}
+        if not self.billing.benefits_active(record, now):
+            reason = self.credibility_engine.get_suspension_reason(record, now)
+            if str(record.get("status", "")) != "suspended" or reason not in (
+                "credibility",
+                "inactivity",
+            ):
+                return {"allowed": True, "verified": False}
+            last_post_at = int(record.get("last_post_at", 0) or 0)
+            post_count = self.credibility_engine.record_post(record, now, "Friendly")
+            limit = int(self.config.get("credibility", {}).get("max_posts_per_window", 2))
+            if post_count > limit:
+                record["last_post_at"] = last_post_at
+                self.audience_engine.record_post(record, "Mean")
+                self._touch()
+                self.save()
+                return {"allowed": False, "verified": False, "code": "post_spam", "posts_in_window": post_count}
+            reinstated = self.credibility_engine.try_reinstate(record, now)
+            self._touch()
+            self.save()
+            return {
+                "allowed": True,
+                "verified": bool(reinstated),
+                "recovering": not reinstated,
+                "posts_in_window": post_count,
+            }
+        last_post_at = int(record.get("last_post_at", 0) or 0)
+        post_count = self.credibility_engine.record_post(record, now, "Friendly")
+        limit = int(self.config.get("credibility", {}).get("max_posts_per_window", 2))
+        if post_count > limit:
+            record["last_post_at"] = last_post_at
+            self.audience_engine.record_post(record, "Mean")
+            self._touch()
+            self.save()
+            return {"allowed": False, "verified": True, "code": "post_spam", "posts_in_window": post_count}
+        self._touch()
+        self.save()
+        return {"allowed": True, "verified": True, "posts_in_window": post_count}
+
+    def _reaction_sentiment_counts(self, reactions):
+        positive = 0
+        negative = 0
+        if reactions is None:
+            return positive, negative
+        if isinstance(reactions, dict):
+            reactions = list(reactions.values())
+        try:
+            iterator = iter(reactions)
+        except TypeError:
+            iterator = iter((reactions,))
+        for reaction in iterator:
+            polarity = getattr(reaction, "polarity", None)
+            if polarity is None and isinstance(reaction, dict):
+                polarity = reaction.get("polarity", reaction.get("sentiment"))
+            if polarity is None:
+                continue
+            text = str(getattr(polarity, "name", polarity)).lower()
+            try:
+                numeric = float(polarity)
+            except (TypeError, ValueError):
+                numeric = 0
+            if text in ("negative", "hostile", "dislike", "unfriendly") or "negative" in text:
+                negative += 1
+            elif text in ("positive", "friendly", "like", "supportive") or "positive" in text:
+                positive += 1
+            elif numeric > 0:
+                positive += 1
+            elif numeric < 0:
+                negative += 1
+        return positive, negative
+
+    def on_verified_post_created(self, sim_id, counted=False, post=None):
         sid = str(sim_id)
         self.ensure_loaded()
         now = int(self.adapter.get_now_ticks())
@@ -1031,25 +1285,33 @@ class VerifiedSubscriptionManager(object):
         if record is None or not self.billing.benefits_active(record, now):
             return None
 
-        follower_bonus = max(0, int(self._benefit_cfg("post_follower_bonus", 12)))
-        current_followers = max(0, int(self.adapter.get_followers(sid) or 0))
-        if follower_bonus > 0:
-            self.adapter.add_followers(sid, follower_bonus)
+        if not counted:
+            last_post_at = int(record.get("last_post_at", 0) or 0)
+            post_count = self.credibility_engine.record_post(record, now, "Friendly")
+            if post_count > int(self.config.get("credibility", {}).get("max_posts_per_window", 2)):
+                record["last_post_at"] = last_post_at
+                self.audience_engine.record_post(record, "Mean")
+                self._touch()
+                self.save()
+                return {
+                    "followers_added": 0,
+                    "payout_earned": 0,
+                    "spam_blocked": True,
+                    "posts_in_window": post_count,
+                }
 
-        payout_base = max(0, int(self._benefit_cfg("post_payout_base", 35)))
-        payout = payout_base + min(200, current_followers // 20)
+        reactions = getattr(post, "reactions", None) if post is not None else None
+        positive, negative = self._reaction_sentiment_counts(reactions)
+        payout = self.credibility_engine.calculate_dynamic_rpm(record, positive, negative)
+        payout = self._accrue_creator_payout(record, payout, now)
         self.adapter.grant_fame(sid, max(0, int(self._benefit_cfg("fame_per_post", 12))))
 
-        record["total_bonus_followers"] = int(record.get("total_bonus_followers", 0) or 0) + follower_bonus
-        record["pending_payout"] = int(record.get("pending_payout", 0) or 0) + payout
-        record["total_earnings"] = int(record.get("total_earnings", 0) or 0) + payout
-        self.credibility_engine.record_post(record, now, "Friendly")
         self.audience_engine.record_post(record, "Friendly")
         self.tiers_engine.record_positive_post(record, "Friendly")
         self.comment_engine.generate_thread(record, 5, now)
         self._touch()
         self.save()
-        return {"followers_added": follower_bonus, "payout_earned": payout}
+        return {"followers_added": 0, "payout_earned": payout}
 
     def generate_contract(self, sim_id):
         record = self.get_record(sim_id)
@@ -1118,7 +1380,7 @@ class VerifiedSubscriptionManager(object):
         self.save()
         return result
 
-    def on_verified_post_reaction(self, author_sim_id):
+    def on_verified_post_reaction(self, author_sim_id, reaction=None):
         sid = str(author_sim_id)
         self.ensure_loaded()
         now = int(self.adapter.get_now_ticks())
@@ -1126,14 +1388,28 @@ class VerifiedSubscriptionManager(object):
         if record is None or not self.billing.benefits_active(record, now):
             return None
 
-        follower_bonus = max(0, int(self._benefit_cfg("reaction_follower_bonus", 3)))
-        payout = self.credibility_engine.calculate_dynamic_rpm(record, 5, 0)
-        if follower_bonus > 0:
+        window_ticks = self.adapter.ticks_from_hours(6)
+        reaction_times = list(record.setdefault("reaction_times_6h", []))
+        reaction_times = [tick for tick in reaction_times if now - int(tick) <= window_ticks]
+        reaction_times.append(int(now))
+        record["reaction_times_6h"] = reaction_times
+        if len(reaction_times) > 12:
+            self.credibility_engine.adjust(record, -2, -2)
+            self._touch()
+            self.save()
+            return {"followers_added": 0, "payout_earned": 0, "reaction_spam_blocked": True}
+
+        positive, negative = self._reaction_sentiment_counts((reaction,))
+        if positive == 0 and negative == 0:
+            return {"followers_added": 0, "payout_earned": 0, "unclassified_reaction": True}
+        follower_bonus = max(0, int(self._benefit_cfg("reaction_follower_bonus", 3))) if positive > 0 else 0
+        if follower_bonus:
             self.adapter.add_followers(sid, follower_bonus)
-        record["total_bonus_followers"] = int(record.get("total_bonus_followers", 0) or 0) + follower_bonus
-        record["pending_payout"] = int(record.get("pending_payout", 0) or 0) + payout
-        record["total_earnings"] = int(record.get("total_earnings", 0) or 0) + payout
+            record["total_bonus_followers"] = int(record.get("total_bonus_followers", 0) or 0) + follower_bonus
+        payout = self.credibility_engine.calculate_dynamic_rpm(record, positive, negative)
+        payout = self._accrue_creator_payout(record, payout, now)
         self._touch()
+        self.save()
         return {"followers_added": follower_bonus, "payout_earned": payout}
 
     def on_verified_follower_recount(self, sim_id, native_delta):
@@ -1144,6 +1420,12 @@ class VerifiedSubscriptionManager(object):
         if record is None or not self.billing.benefits_active(record, now):
             return 0
 
+        day_ticks = max(1, int(self.adapter.ticks_per_day()))
+        current_day = int(now // day_ticks)
+        if int(record.get("last_follower_bonus_day", -1)) == current_day:
+            return 0
+        record["last_follower_bonus_day"] = current_day
+
         mult = max(1.0, float(self._benefit_cfg("follower_growth_multiplier", 2.5)))
         min_gain = max(0, int(self._benefit_cfg("min_daily_follower_gain", 20)))
         native_delta = int(native_delta)
@@ -1152,6 +1434,7 @@ class VerifiedSubscriptionManager(object):
         else:
             # Recover any net loss plus guarantee active algorithm growth.
             extra = abs(native_delta) + min_gain
+        extra = min(extra, max(0, int(self.config.get("credibility", {}).get("max_daily_follower_bonus", 50))))
         if extra > 0:
             self.adapter.add_followers(sid, extra)
             record["total_bonus_followers"] = int(record.get("total_bonus_followers", 0) or 0) + extra
@@ -1164,6 +1447,37 @@ class VerifiedSubscriptionManager(object):
             self._touch()
             self.save()
         return extra
+
+    def on_dm_attempt(self, sender_sim_id, target_sim_id, is_friend=False):
+        sid = str(sender_sim_id)
+        self.ensure_loaded()
+        now = int(self.adapter.get_now_ticks())
+        record = self.get_record(sid)
+        if record is None or not self.billing.benefits_active(record, now):
+            return {"allowed": True, "verified": False}
+        result = self.dm_engine.send_dm(record, sid, str(target_sim_id), bool(is_friend), now)
+        if not result.get("allowed"):
+            self.notifications.set_last_result(
+                sid,
+                False,
+                "DM blocked: Social Battery too low.",
+                "social_battery_low",
+                "error",
+                now,
+            )
+        elif int(result.get("dm_count", 1)) >= 3:
+            self.notifications.set_last_result(
+                sid,
+                False,
+                "DM blocked: double-text spam limit reached for this 12-hour window.",
+                "dm_spam",
+                "error",
+                now,
+            )
+            result["allowed"] = False
+        self._touch()
+        self.save()
+        return result
 
     def on_verified_friend_added(self, sim_id, target_sim_id):
         sid = str(sim_id)
@@ -1198,19 +1512,54 @@ class VerifiedSubscriptionManager(object):
             return 0
         now = int(self.adapter.get_now_ticks())
         changed = 0
+        ticks_per_hour = max(1, int(self.adapter.ticks_from_hours(1)))
         for sid, record in list(self._subscriptions().items()):
             if not isinstance(record, dict):
                 continue
             try:
-                if self.billing.process_due(record, now):
+                state_tick = int(record.get("last_system_tick", 0) or 0)
+                if not record.get("system_tick_initialized", False):
+                    record["last_system_tick"] = now
+                    record["system_tick_initialized"] = True
+                    changed += 1
+                    state_tick = now
+                elapsed_hours = max(0, int((now - state_tick) // ticks_per_hour))
+                if elapsed_hours:
+                    record["last_system_tick"] = state_tick + elapsed_hours * ticks_per_hour
+                    battery_before = float(record.get("social_battery", self.dm_engine.max_battery))
+                    self.dm_engine.regen_battery(record, elapsed_hours)
+                    if float(record.get("social_battery", 0)) != battery_before:
+                        changed += 1
+                    for _ in range(elapsed_hours):
+                        current_followers = int(self.adapter.get_followers(sid) or 0)
+                        lost_followers = self.audience_engine.apply_cancel_bleed(record, now, current_followers)
+                        if lost_followers:
+                            self.adapter.add_followers(sid, -lost_followers)
+                            changed += 1
+                    self.audience_engine.advance_redemption_clean_hours(record, elapsed_hours)
+                    changed += 1
+                reputation_suspended = (
+                    str(record.get("status", "")) == "suspended"
+                    and self.credibility_engine.get_suspension_reason(record, now)
+                    in ("credibility", "inactivity")
+                )
+                if reputation_suspended:
+                    if self.credibility_engine.try_reinstate(record, now):
+                        changed += 1
+                        if record.get("status") == "active" and self.billing.process_due(record, now):
+                            changed += 1
+                elif self.billing.process_due(record, now):
                     changed += 1
                 if self.advance_boost_campaign(record, now):
                     changed += 1
                 self.credibility_engine.ensure_state(record)
-                self.dm_engine.regen_battery(record, 1)
-                self.credibility_engine.check_suspension(record, now)
-                self.tiers_engine.process_contracts(record, now, int(record.get("brand_safety_score", 80)))
-                if self.audience_engine.apply_cancel_bleed(record, now, int(record.get("followers", 0) or 0)):
+                previous_status = record.get("status")
+                previous_strikes = int(record.get("active_strikes", 0) or 0)
+                if self.credibility_engine.check_suspension(record, now):
+                    changed += 1
+                if record.get("status") != previous_status or int(record.get("active_strikes", 0) or 0) != previous_strikes:
+                    changed += 1
+                if self.tiers_engine.process_contracts(record, now, int(record.get("brand_safety_score", 80))):
                     changed += 1
             except Exception:
                 continue
@@ -1260,9 +1609,15 @@ class VerifiedSubscriptionManager(object):
         self.ensure_loaded()
         subscriptions = []
         for sid, record in self._subscriptions().items():
+            tier_labels = {
+                "creator_blue": "Blue",
+                "partner_gold": "Gold",
+                "mogul_obsidian": "Obsidian",
+            }
             subscriptions.append({
                 "sim_id": sid,
                 "tier": record.get("tier", "creator_blue"),
+                "tier_label": tier_labels.get(str(record.get("tier", "creator_blue")), "No Tier"),
                 "credibility": record.get("credibility_score", 65),
                 "brand_safety": record.get("brand_safety_score", 80),
                 "social_battery": record.get("social_battery", 100.0),

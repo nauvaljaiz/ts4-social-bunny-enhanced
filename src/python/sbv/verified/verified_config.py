@@ -65,7 +65,7 @@ DEFAULT_CONFIG = {
         "boost_follower_min": 45,
         "boost_follower_max": 110,
         "boost_payout_base": 60,
-        "friendship_bonus_on_add": 8.0,
+        "friendship_bonus_on_add": 1.5,
     },
     "persistence": {
         "schema_version": 2,
@@ -83,6 +83,8 @@ DEFAULT_CONFIG = {
         "spam_post_window_hours": 6,
         "max_posts_per_window": 2,
         "base_rpm": 2.5,
+        "daily_payout_cap": 250,
+        "max_daily_follower_bonus": 50,
     },
     "dm_balance": {
         "social_battery_max": 100.0,

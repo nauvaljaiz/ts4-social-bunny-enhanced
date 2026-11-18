@@ -13,6 +13,7 @@ class CredibilityEngine(object):
         self.spam_window_hours = int(credibility.get("spam_post_window_hours", 6))
         self.max_posts_per_window = int(credibility.get("max_posts_per_window", 2))
         self.base_rpm = float(credibility.get("base_rpm", 2.5))
+        self.daily_payout_cap = max(0, int(credibility.get("daily_payout_cap", 250)))
         self.adapter = adapter
 
     def ensure_state(self, record):
@@ -24,7 +25,30 @@ class CredibilityEngine(object):
         record.setdefault("reativity_cooldown_until", 0)
         record.setdefault("reapplication_cooldown_until", 0)
         record.setdefault("active_strikes", 0)
+        record.setdefault("suspension_reason", "")
         return record
+
+    def get_suspension_reason(self, record, now):
+        reason = str(record.get("suspension_reason", "") or "")
+        if reason in ("payment", "credibility", "inactivity"):
+            return reason
+        if str(record.get("status", "")).lower() != "suspended":
+            return ""
+
+        if int(record.get("credibility_score", self.initial_credibility)) < self.revocation_threshold:
+            return "credibility"
+
+        last_post = int(record.get("last_post_at", 0) or 0)
+        if last_post > 0 and self.adapter is not None:
+            if int(now) - last_post >= self.adapter.ticks_from_days(self.inactivity_days):
+                return "inactivity"
+        if int(record.get("last_failure_at", 0) or 0) > int(
+            record.get("last_successful_payment", 0) or 0
+        ):
+            return "payment"
+        if int(record.get("current_period_end", 0) or 0) <= int(now):
+            return "payment"
+        return "payment"
 
     def clamp(self, value):
         return max(0, min(100, int(value)))
@@ -76,17 +100,52 @@ class CredibilityEngine(object):
 
     def check_suspension(self, record, now):
         self.ensure_state(record)
+        status = str(record.get("status", "")).lower()
+        if status not in ("active", "cancelled", "payment_failed", "grace_period") or status == "suspended":
+            return False
         credibility = int(record["credibility_score"])
         last_post = int(record.get("last_post_at", 0) or 0)
-        verified = str(record.get("status", "")).lower() not in ("expired", "not_subscribed")
         inactive = False
-        if verified and last_post > 0 and self.adapter is not None:
+        if last_post > 0 and self.adapter is not None:
             inactive = now - last_post >= self.adapter.ticks_from_days(self.inactivity_days)
         if credibility < self.revocation_threshold or inactive:
             record["status"] = "suspended"
+            record["suspension_reason"] = (
+                "credibility" if credibility < self.revocation_threshold else "inactivity"
+            )
             record["active_strikes"] = int(record.get("active_strikes", 0) or 0) + 1
             if self.adapter is not None:
                 record["reapplication_cooldown_until"] = now + self.adapter.ticks_from_hours(72)
                 record["cooldown_fee_multiplier"] = 1.5
             return True
         return False
+
+    def try_reinstate(self, record, now):
+        if str(record.get("status", "")).lower() != "suspended":
+            return False
+        reason = self.get_suspension_reason(record, now)
+        if reason not in ("credibility", "inactivity"):
+            return False
+        if int(record.get("credibility_score", 0) or 0) < self.revocation_threshold:
+            return False
+        if int(now) < int(record.get("reapplication_cooldown_until", 0) or 0):
+            return False
+
+        last_post = int(record.get("last_post_at", 0) or 0)
+        if last_post <= 0 or (
+            self.adapter is not None
+            and int(now) - last_post >= self.adapter.ticks_from_days(self.inactivity_days)
+        ):
+            return False
+
+        period_end = int(record.get("current_period_end", 0) or 0)
+        if period_end > 0 and int(now) >= period_end and not record.get("auto_renew", False):
+            record["status"] = "expired"
+            record["expiration_timestamp"] = int(now)
+        else:
+            record["status"] = "active"
+            if period_end > 0 and int(now) >= period_end:
+                record["next_billing_at"] = int(now)
+        record["suspension_reason"] = ""
+        record["reapplication_cooldown_until"] = 0
+        return True

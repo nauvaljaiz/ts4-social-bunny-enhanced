@@ -163,6 +163,7 @@ class VerifiedPersistence(object):
             record.setdefault("last_failure_at", 0)
             record.setdefault("last_failure_reason", "")
             record.setdefault("retry_count", 0)
+            record.setdefault("last_manual_retry_at", 0)
             record.setdefault("reminder_sent_for", 0)
             record.setdefault("pending_payout", 0)
             record.setdefault("total_earnings", 0)
@@ -188,6 +189,12 @@ class VerifiedPersistence(object):
             record.setdefault("credibility_score", 65)
             record.setdefault("brand_safety_score", 80)
             record.setdefault("social_battery", 100.0)
+            record.setdefault("last_system_tick", 0)
+            record.setdefault("system_tick_initialized", False)
+            record.setdefault("last_post_at", 0)
+            record.setdefault("daily_creator_earnings", 0)
+            record.setdefault("creator_earnings_day", -1)
+            record.setdefault("last_follower_bonus_day", -1)
             record.setdefault("dm_pair_history", {})
             record.setdefault("audience_segments", {
                 "core_loyalists": 40,

@@ -701,32 +701,67 @@ package widgets.Gameplay.SocialMedia
 
          var prStudio:Object = this.mVerifiedState.pr_studio != null ? this.mVerifiedState.pr_studio : new Object();
          var prAudience:Object = prStudio.audience_segments != null ? prStudio.audience_segments : new Object();
-         var prTier:String = String(prStudio.tier != null ? prStudio.tier : "none");
+         var prTier:String = String(prStudio.tier_label != null ? prStudio.tier_label : "No Tier");
+         if(prTier == "creator_blue")
+         {
+            prTier = "Blue";
+         }
+         else if(prTier == "partner_gold")
+         {
+            prTier = "Gold";
+         }
+         else if(prTier == "mogul_obsidian")
+         {
+            prTier = "Obsidian";
+         }
          var prCredibility:int = int(prStudio.credibility != null ? prStudio.credibility : 65);
          var prSafety:int = int(prStudio.brand_safety != null ? prStudio.brand_safety : 80);
          var prBattery:Number = Number(prStudio.social_battery != null ? prStudio.social_battery : 100);
          var prState:String = String(prStudio.cancelation_state != null ? prStudio.cancelation_state : "NORMAL");
-         this.AddVerifiedCard(cardX,y,cardW,142,0xFFF9FD,0xDCCFE3,10);
-         this.AddVerifiedLabel("PR & Audience Studio",14,0x241A2B,true,innerX,y + 10,300,22);
-         this.AddVerifiedLabel("Tier: " + prTier,12,0x1D9BF0,true,rightX,y + 12,174,20);
-         this.AddVerifiedLabel("Credibility",12,0x6F5B79,false,innerX,y + 38,140,18);
-         this.DrawVerifiedMeter(innerX,y + 58,140,8,prCredibility,0x1D9BF0);
-         this.AddVerifiedLabel(String(prCredibility),12,0x241A2B,true,innerX + 148,y + 52,36,20);
-         this.AddVerifiedLabel("Brand Safety",12,0x6F5B79,false,innerX,y + 78,140,18);
-         this.DrawVerifiedMeter(innerX,y + 98,140,8,prSafety,0x7CB342);
-         this.AddVerifiedLabel(String(prSafety),12,0x241A2B,true,innerX + 148,y + 92,36,20);
-         this.AddVerifiedLabel("Social Battery",12,0x6F5B79,false,rightX,y + 38,174,18);
-         this.DrawVerifiedMeter(rightX,y + 58,174,8,int(Math.max(0,Math.min(100,prBattery))),0xF5A623);
-         this.AddVerifiedLabel(prState,12,prState == "NORMAL" ? 0x2E7D32 : 0xB3261E,true,rightX,y + 78,174,22);
+         var studioH:Number = 188;
+         this.AddVerifiedCard(cardX,y,cardW,studioH,0xFFF9FD,0xDCCFE3,12);
+         this.AddVerifiedLabel("PR & Audience Studio",15,0x241A2B,true,innerX,y + 14,300,24);
+
+         var tierColor:uint = prTier == "Obsidian" ? 0x2E2438 : (prTier == "Gold" ? 0xB68A20 : 0x1D9BF0);
+         this.DrawVerifiedStatusPill(prTier + " Tier",cardX + cardW - 126,y + 12,110,28,tierColor);
+
+         var metricY:Number = y + 52;
+         var metricW:Number = 144;
+         var metricGap:Number = 12;
+         var metric1X:Number = innerX;
+         var metric2X:Number = metric1X + metricW + metricGap;
+         var metric3X:Number = metric2X + metricW + metricGap;
+         this.AddVerifiedCard(metric1X,metricY,metricW,58,0xFFFFFF,0xE8DFEC,8);
+         this.AddVerifiedCard(metric2X,metricY,metricW,58,0xFFFFFF,0xE8DFEC,8);
+         this.AddVerifiedCard(metric3X,metricY,metricW,58,0xFFFFFF,0xE8DFEC,8);
+
+         this.AddVerifiedLabel("CREDIBILITY",10,0x8A7893,true,metric1X + 10,metricY + 8,130,14);
+         this.AddVerifiedLabel(String(prCredibility) + "/100",16,0x241A2B,true,metric1X + 10,metricY + 26,130,22);
+         this.DrawVerifiedMeter(metric1X + 10,metricY + 48,130,5,prCredibility,0x1D9BF0);
+
+         this.AddVerifiedLabel("BRAND SAFETY",10,0x8A7893,true,metric2X + 10,metricY + 8,130,14);
+         this.AddVerifiedLabel(String(prSafety) + "/100",16,0x241A2B,true,metric2X + 10,metricY + 26,130,22);
+         this.DrawVerifiedMeter(metric2X + 10,metricY + 48,130,5,prSafety,0x7CB342);
+
+         var batteryW:Number = metricW;
+         this.AddVerifiedLabel("SOCIAL BATTERY",10,0x8A7893,true,metric3X + 10,metricY + 8,batteryW - 20,14);
+         this.AddVerifiedLabel(int(Math.max(0,prBattery)) + "%",16,0x241A2B,true,metric3X + 10,metricY + 26,batteryW - 20,22);
+         this.DrawVerifiedMeter(metric3X + 10,metricY + 48,batteryW - 20,5,int(Math.max(0,Math.min(100,prBattery))),0xF5A623);
+
+         var stateY:Number = y + 118;
+         this.AddVerifiedCard(innerX,stateY,cardW - 32,58,0xFFFFFF,0xE8DFEC,8);
+         this.AddVerifiedLabel("CANCELLATION STATE",10,0x8A7893,true,innerX + 10,stateY + 8,180,14);
+         this.AddVerifiedLabel(prState.replace("_"," "),13,prState == "NORMAL" ? 0x2E7D32 : 0xB3261E,true,innerX + 10,stateY + 26,180,20);
          var loyal:Number = Number(prAudience.core_loyalists != null ? prAudience.core_loyalists : 40);
          var casual:Number = Number(prAudience.casual_browsers != null ? prAudience.casual_browsers : 35);
          var drama:Number = Number(prAudience.drama_vultures != null ? prAudience.drama_vultures : 15);
          var anti:Number = Number(prAudience.anti_fans != null ? prAudience.anti_fans : 10);
-         var audienceX:Number = rightX;
-         var audienceW:Number = 174;
-         var audienceY:Number = 128;
-         this.DrawVerifiedAudienceBar(audienceX,y + audienceY,audienceW,8,loyal,casual,drama,anti);
-         y += 154;
+         var audienceX:Number = innerX + 202;
+         var audienceW:Number = cardW - 218;
+         this.DrawVerifiedAudienceBar(audienceX,stateY + 18,audienceW,10,loyal,casual,drama,anti);
+         this.AddVerifiedLabel("Loyal " + int(loyal) + "%  ·  Casual " + int(casual) + "%",10,0x6F5B79,false,audienceX,stateY + 32,audienceW,14);
+         this.AddVerifiedLabel("Drama " + int(drama) + "%  ·  Anti " + int(anti) + "%",10,0x6F5B79,false,audienceX,stateY + 46,audienceW,14);
+         y += studioH + 12;
 
          var benefits:Array = this.mVerifiedState.benefits != null ? this.mVerifiedState.benefits : (plan.benefits != null ? plan.benefits : new Array());
          var rows:int = Math.ceil(benefits.length / 2);
@@ -935,7 +970,7 @@ package widgets.Gameplay.SocialMedia
             btn.y = y;
             btn.addEventListener(PushButtonEvent.CLICK,this.OnVerifiedButtonClick,false,0,true);
             this.mVerifiedCanvas.addChild(btn);
-            btn.htmlText = String(item.label);
+            btn.htmlText = this.ShortenVerified(String(item.label),14);
             visualX += VERIFIED_BTN_W + VERIFIED_BTN_GAP;
             i++;
          }
@@ -1013,7 +1048,46 @@ package widgets.Gameplay.SocialMedia
          tf.defaultTextFormat = fmt;
          tf.text = text != null ? text : "";
          tf.setTextFormat(fmt);
+         this.FitVerifiedText(tf,w,h,multiline);
          return tf;
+      }
+
+      protected function FitVerifiedText(tf:TextField, w:Number, h:Number, multiline:Boolean) : void
+      {
+         if(tf == null)
+         {
+            return;
+         }
+         var fitted:String = String(tf.text != null ? tf.text : "");
+         tf.width = w;
+         tf.height = h;
+         tf.text = fitted;
+         tf.setTextFormat(tf.defaultTextFormat);
+
+         if(!multiline)
+         {
+            while(fitted.length > 1 && tf.textWidth > w - 4)
+            {
+               fitted = fitted.substr(0,fitted.length - 1);
+               tf.text = fitted + "\u2026";
+               tf.setTextFormat(tf.defaultTextFormat);
+            }
+            return;
+         }
+
+         var maxChars:int = Math.max(8,int(w / 6));
+         while(fitted.length > maxChars && tf.textHeight > h - 4)
+         {
+            fitted = fitted.substr(0,fitted.length - 1);
+            tf.text = fitted + "\u2026";
+            tf.setTextFormat(tf.defaultTextFormat);
+         }
+         while(fitted.length > 1 && (tf.textHeight > h - 2 || tf.textWidth > w - 4))
+         {
+            fitted = fitted.substr(0,fitted.length - 1);
+            tf.text = fitted + "\u2026";
+            tf.setTextFormat(tf.defaultTextFormat);
+         }
       }
 
       protected function CreateVerifiedBadge(size:Number) : Sprite
@@ -1111,9 +1185,12 @@ package widgets.Gameplay.SocialMedia
          {
             return;
          }
+         var ownerId:* = this.mVerifiedState != null && this.mVerifiedState.owner_sim_id != null
+            ? this.mVerifiedState.owner_sim_id
+            : this.mSocialMediaDialogData.sim_id;
          CommunicationManager.PostServerCommand(
             "sbv.verified",
-            this.mSocialMediaDialogData.sim_id,
+            String(ownerId),
             action,
             this.EncodeVerifiedArg(arg1),
             this.EncodeVerifiedArg(arg2)
@@ -1297,64 +1374,78 @@ package widgets.Gameplay.SocialMedia
       {
          var nativeList:Array = new Array();
          var chunks:Array = new Array();
+         var newestGeneration:Number = -1;
          if(rawItems != null)
          {
+            var packetScan:int = 0;
+            while(packetScan < rawItems.length)
+            {
+               var packetItem:SocialMediaFeedItem = rawItems[packetScan] as SocialMediaFeedItem;
+               var scanId:Number = packetItem != null ? Number(packetItem.post_id) : -1;
+               if(packetItem != null && scanId >= 9000000 && scanId <= 2147483647)
+               {
+                  newestGeneration = Math.max(newestGeneration,Math.floor((scanId - 9000000) / 100));
+               }
+               packetScan++;
+            }
             var i:int = 0;
             while(i < rawItems.length)
             {
                var item:SocialMediaFeedItem = rawItems[i] as SocialMediaFeedItem;
                var packetId:Number = item != null ? Number(item.post_id) : -1;
-               if(item != null && packetId >= 9000000 && packetId < 9000100)
+               var packetGeneration:Number = item != null && packetId >= 9000000
+                  ? Math.floor((packetId - 9000000) / 100)
+                  : -1;
+               if(item != null && packetId >= 9000000 && packetId <= 2147483647)
                {
-                  var idx:int = int(packetId) - 9000000;
-                  if(idx < 0 || idx > 64)
+                  if(packetGeneration == newestGeneration)
                   {
-                     idx = chunks.length;
-                  }
-                  var chunkText:String = "";
-                  if(item.post_text != null)
-                  {
-                     try
+                     var idx:int = int(packetId - 9000000) % 100;
+                     var chunkText:String = "";
+                     if(item.post_text != null)
                      {
-                        chunkText = item.post_text.toString();
-                     }
-                     catch(textError:Error)
-                     {
-                        chunkText = "";
-                     }
-                     if(chunkText == null || chunkText == "" || chunkText == "{0.String}")
-                     {
-                        var tokenList:Array = item.post_text.tokens as Array;
-                        if(tokenList != null && tokenList.length > 0)
+                        try
                         {
-                           var firstToken:Object = tokenList[0];
-                           if(firstToken != null)
+                           chunkText = item.post_text.toString();
+                        }
+                        catch(textError:Error)
+                        {
+                           chunkText = "";
+                        }
+                        if(chunkText == null || chunkText == "" || chunkText == "{0.String}")
+                        {
+                           var tokenList:Array = item.post_text.tokens as Array;
+                           if(tokenList != null && tokenList.length > 0)
                            {
-                              if(firstToken["raw_text"] != null)
+                              var firstToken:Object = tokenList[0];
+                              if(firstToken != null)
                               {
-                                 chunkText = String(firstToken["raw_text"]);
-                              }
-                              else if(firstToken["rawText"] != null)
-                              {
-                                 chunkText = String(firstToken["rawText"]);
-                              }
-                              else if(firstToken["string_value"] != null)
-                              {
-                                 chunkText = String(firstToken["string_value"]);
-                              }
-                              else if(firstToken["stringValue"] != null)
-                              {
-                                 chunkText = String(firstToken["stringValue"]);
-                              }
-                              else if(firstToken["text"] != null)
-                              {
-                                 chunkText = String(firstToken["text"]);
+                                 if(firstToken["raw_text"] != null)
+                                 {
+                                    chunkText = String(firstToken["raw_text"]);
+                                 }
+                                 else if(firstToken["rawText"] != null)
+                                 {
+                                    chunkText = String(firstToken["rawText"]);
+                                 }
+                                 else if(firstToken["string_value"] != null)
+                                 {
+                                    chunkText = String(firstToken["string_value"]);
+                                 }
+                                 else if(firstToken["stringValue"] != null)
+                                 {
+                                    chunkText = String(firstToken["stringValue"]);
+                                 }
+                                 else if(firstToken["text"] != null)
+                                 {
+                                    chunkText = String(firstToken["text"]);
+                                 }
                               }
                            }
                         }
                      }
+                     chunks[idx] = chunkText;
                   }
-                  chunks[idx] = chunkText;
                }
                else if(item != null)
                {

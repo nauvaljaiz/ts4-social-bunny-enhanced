@@ -88,7 +88,7 @@ class AudienceEngine(object):
         self.ensure_state(record)
         if record["cancelation_state"] != "CANCEL_WAVE":
             return 0
-        total = int(record.get("followers", followers or 0) or 0)
+        total = int(followers if followers is not None else record.get("followers", 0) or 0)
         pct = random.uniform(self.bleed_min, self.bleed_max)
         lost = int(round(total * pct))
         record["followers"] = max(0, total - lost)

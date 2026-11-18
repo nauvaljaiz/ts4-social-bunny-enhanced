@@ -134,12 +134,42 @@ def _install_verified_perk_hooks(manager):
         return
 
     reentry = {"active": False}
+    dm_guard = {"active": False}
 
     if hasattr(SocialMediaService, "create_post"):
         original_create_post = SocialMediaService.create_post
 
         def _verified_create_post(self, post_type, author_sim_id, target_sim_id, narrative, context_post=None):
-            result = original_create_post(self, post_type, author_sim_id, target_sim_id, narrative, context_post)
+            dm_result = None
+            try:
+                is_public_post = post_type in (SocialMediaPostType.DEFAULT, SocialMediaPostType.PUBLIC_POST)
+                if not is_public_post and not dm_guard["active"]:
+                    manager.ensure_loaded()
+                    dm_result = manager.on_dm_attempt(author_sim_id, target_sim_id, False)
+                    if not dm_result.get("allowed", True):
+                        return None
+                else:
+                    if is_public_post:
+                        manager.ensure_loaded()
+                        post_attempt = manager.on_verified_post_attempt(author_sim_id)
+                        if not post_attempt.get("allowed", True):
+                            return None
+            except Exception:
+                pass
+            was_dm_guarded = dm_guard["active"]
+            if post_type not in (SocialMediaPostType.DEFAULT, SocialMediaPostType.PUBLIC_POST):
+                dm_guard["active"] = True
+            try:
+                result = original_create_post(self, post_type, author_sim_id, target_sim_id, narrative, context_post)
+            finally:
+                dm_guard["active"] = was_dm_guarded
+            if dm_result is not None and dm_result.get("allowed", False):
+                try:
+                    delta = float(dm_result.get("friendship_delta", 0.0))
+                    if delta != 0:
+                        manager.adapter.add_friendship(author_sim_id, target_sim_id, delta)
+                except Exception:
+                    pass
             if reentry["active"]:
                 return result
             try:
@@ -148,7 +178,7 @@ def _install_verified_perk_hooks(manager):
                     if manager.is_verified(author_sim_id):
                         reentry["active"] = True
                         try:
-                            manager.on_verified_post_created(author_sim_id)
+                            manager.on_verified_post_created(author_sim_id, counted=True, post=result)
                             manager.adapter.simulate_npc_reactions(author_sim_id, 2)
                         finally:
                             reentry["active"] = False
@@ -157,6 +187,40 @@ def _install_verified_perk_hooks(manager):
             return result
 
         SocialMediaService.create_post = _verified_create_post
+
+    dm_method_names = []
+    for name in dir(SocialMediaService):
+        lowered = name.lower()
+        is_send_action = any(token in lowered for token in ("send", "create", "add"))
+        is_dm_action = "dm" in lowered or "direct_message" in lowered
+        is_read_action = any(token in lowered for token in ("get", "read", "list", "fetch"))
+        if is_send_action and is_dm_action and not is_read_action and callable(getattr(SocialMediaService, name, None)):
+            dm_method_names.append(name)
+    for method_name in dm_method_names:
+        try:
+            original_dm_method = getattr(SocialMediaService, method_name)
+
+            def _verified_dm_method(self, *args, __original=original_dm_method, **kwargs):
+                sender = args[0] if len(args) > 0 else kwargs.get("sender_sim_id")
+                target = args[1] if len(args) > 1 else kwargs.get("target_sim_id")
+                if sender is not None and target is not None:
+                    try:
+                        manager.ensure_loaded()
+                        dm_result = manager.on_dm_attempt(sender, target, False)
+                        if not dm_result.get("allowed", True):
+                            return None
+                    except Exception:
+                        pass
+                was_dm_guarded = dm_guard["active"]
+                dm_guard["active"] = True
+                try:
+                    return __original(self, *args, **kwargs)
+                finally:
+                    dm_guard["active"] = was_dm_guarded
+
+            setattr(SocialMediaService, method_name, _verified_dm_method)
+        except Exception:
+            continue
 
     if hasattr(SocialMediaService, "add_reaction_to_post"):
         original_add_reaction = SocialMediaService.add_reaction_to_post
@@ -174,7 +238,7 @@ def _install_verified_perk_hooks(manager):
                     if post_owner is not None and str(author_sim_id) != str(post_owner):
                         manager.ensure_loaded()
                         if manager.is_verified(post_owner):
-                            manager.on_verified_post_reaction(post_owner)
+                            manager.on_verified_post_reaction(post_owner, new_reaction)
             except Exception:
                 pass
             return result
@@ -192,12 +256,9 @@ def _install_verified_perk_hooks(manager):
                 before = 0
             result = original_calc_followers(self, author_sim_id)
             try:
-                after = int(self.get_current_followers_count(author_sim_id) or 0)
-                if after == before:
-                    manager.adapter.add_followers(author_sim_id, 1)
-                    after = int(self.get_current_followers_count(author_sim_id) or 0)
                 manager.ensure_loaded()
                 if manager.is_verified(author_sim_id):
+                    after = int(self.get_current_followers_count(author_sim_id) or 0)
                     manager.on_verified_follower_recount(author_sim_id, after - before)
             except Exception:
                 pass

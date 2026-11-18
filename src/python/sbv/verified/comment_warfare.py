@@ -35,6 +35,8 @@ class CommentWarfareEngine(object):
             record["credibility_score"] = max(0, int(record.get("credibility_score", 65) or 65) - 10)
             record["organic_reach_multiplier"] = 0.60
             losses = list(record.setdefault("ratio_losses_24h", []))
+            window = self.adapter.ticks_from_hours(24) if self.adapter is not None else 24 * 1500
+            losses = [tick for tick in losses if now - int(tick) <= window]
             losses.append(int(now))
             record["ratio_losses_24h"] = losses
             record["cancelation_state"] = "CANCEL_WAVE" if len(losses) >= 2 else "CONTROVERSY_WATCH"

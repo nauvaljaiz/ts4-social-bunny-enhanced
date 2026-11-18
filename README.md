@@ -37,11 +37,12 @@ Status yang ditampilkan: **Not Subscribed**, **Eligible**, **Active**, **Payment
 - **Badge biru** di samping nama Sim di Social Bunny.
 - **Prioritas Feed:** posting Sim Verified diprioritaskan di Feed, hingga batas prioritas yang dikonfigurasi.
 - **Prioritas rekomendasi teman:** Sim Verified dapat diprioritaskan oleh pemilih kontak baru bawaan.
-- **Pertumbuhan followers:** bonus awal **+75 followers** saat berlangganan, bonus dari posting dan reaksi, serta pengali pertumbuhan algoritma bawaan **2,5×**. Jika perhitungan native tidak menaikkan jumlah followers, mod memberikan kenaikan minimum agar jumlahnya tidak mandek.
-- **Bonus posting:** posting publik bawaan dapat memberi **+12 followers**, pendapatan kreator, Fame, dan reaksi NPC otomatis.
-- **Bonus reaksi:** reaksi pertama Sim lain pada posting Verified dapat memberi **+3 followers** dan pendapatan kreator.
+- **Pertumbuhan followers:** bonus awal **+75 followers** saat berlangganan dan bonus **2,5×** pada satu perhitungan harian; bonus tambahan dibatasi maksimal **50 followers per hari Sim**.
+- **Batas posting:** maksimal **2 posting dalam 6 jam Sim** untuk mencegah spam; posting setelah batas tidak dibuat.
+- **Bonus posting:** posting publik yang berhasil memberi Fame dan dapat memicu reaksi NPC otomatis.
+- **Bonus reaksi:** reaksi positif terklasifikasi dapat memberi **+3 followers** dan pendapatan berbasis sentimen.
 - **Creator Spotlight / Boost Reach:** kampanye selama **4 jam Sim** dengan hasil followers, reaksi, dan pendapatan dalam gelombang per jam. Tersedia kembali setelah cooldown bawaan **24 jam Sim**.
-- **Pendapatan kreator:** pendapatan dari posting, reaksi, dan kampanye Boost dikumpulkan sebagai saldo tertunda; gunakan **Claim** untuk memindahkannya ke dana rumah tangga.
+- **Pendapatan kreator:** pendapatan mengikuti reaksi positif/negatif dan Brand Safety, dibatasi maksimal **§250 per hari Sim** dari posting, reaksi, dan Boost; gunakan **Claim** untuk memindahkan saldo tertunda ke dana rumah tangga.
 - **Networking:** menambahkan teman Social Bunny memberi bonus awal hubungan pertemanan.
 
 Nilai manfaat selain harga dan periode paket juga tersedia di konfigurasi `benefits` (lihat contoh di bawah).
@@ -63,6 +64,8 @@ Nilai manfaat selain harga dan periode paket juga tersedia di konfigurasi `benef
 3. Pilih **Subscribe**, periksa konfirmasi, lalu konfirmasikan pembayaran Simoleon.
 4. Gunakan tombol pengelolaan untuk mengatur perpanjangan otomatis, membatalkan atau mengaktifkan kembali langganan, mencoba ulang pembayaran, menjalankan Boost, dan mengklaim pendapatan.
 5. Periksa riwayat pembayaran dan pemberitahuan di bagian bawah tab.
+
+Retry manual dibatasi satu percobaan per interval retry agar klik berulang tidak memicu tagihan ganda. Retry otomatis hanya berjalan selama grace period; status pembayaran yang masih menunggu konfirmasi tidak akan ditagih ulang otomatis.
 
 ## Konfigurasi
 
@@ -87,17 +90,22 @@ Contoh mengubah harga, periode pembayaran, dan beberapa manfaat:
     "welcome_follower_bonus": 75,
     "follower_growth_multiplier": 2.5,
     "min_daily_follower_gain": 20,
-    "post_follower_bonus": 12,
-    "post_payout_base": 35,
-    "reaction_payout_bonus": 10,
     "reaction_follower_bonus": 3,
     "fame_per_post": 12,
     "boost_duration_hours": 4,
     "boost_cooldown_hours": 24,
     "boost_follower_min": 45,
     "boost_follower_max": 110,
-    "boost_payout_base": 60,
-    "friendship_bonus_on_add": 8.0
+    "boost_payout_base": 60
+  },
+  "dm_balance": {
+    "friendship_bonus_on_add": 1.5
+  },
+  "credibility": {
+    "max_posts_per_window": 2,
+    "spam_post_window_hours": 6,
+    "base_rpm": 2.5,
+    "daily_payout_cap": 250
   }
 }
 ```

@@ -52,7 +52,19 @@ class TestVerifiedUIBridgeAndPackages(unittest.TestCase):
         packets = encode_snapshot_to_packets(101, snapshot, 12345)
         self.assertGreaterEqual(len(packets), 1)
         self.assertTrue(all(packet.post_type == 0 for packet in packets))
-        self.assertEqual(packets[0].post_id, 9000000)
+        first_generation = (packets[0].post_id - 9000000) // 100
+        self.assertGreaterEqual(first_generation, 0)
+        self.assertLessEqual(packets[-1].post_id, 2147483647)
+        self.assertEqual(
+            [packet.post_id - packets[0].post_id for packet in packets],
+            list(range(len(packets))),
+        )
+        refreshed_packets = encode_snapshot_to_packets(101, snapshot, 12345)
+        self.assertNotEqual(packets[0].post_id, refreshed_packets[0].post_id)
+        self.assertGreater(
+            (refreshed_packets[0].post_id - 9000000) // 100,
+            first_generation,
+        )
         joined = "".join(packet.post_text.tokens[0].raw_text for packet in packets)
         parsed = json.loads(joined)
         self.assertEqual(parsed["subscription"]["status"], "active")

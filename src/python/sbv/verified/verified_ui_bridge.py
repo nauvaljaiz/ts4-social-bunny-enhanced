@@ -8,15 +8,22 @@ CommunicationManager.PostServerCommand command ``sbv.verified``.
 
 import json
 import os
+import time
 import traceback
 import urllib.parse
 
 # Use a valid native post type (DEFAULT=0) so the C++ client never drops the
 # packet as an unknown enum. State packets are identified by their reserved
-# post_id range and are filtered out of the native feed in ActionScript.
+# generation-based post_id range and are filtered out of the native feed in ActionScript.
 STATE_PACKET_TYPE = 0
 STATE_PACKET_ID_BASE = 9000000
+STATE_PACKET_ID_STRIDE = 100
+STATE_PACKET_MAX_GENERATION = (
+    (2147483647 - STATE_PACKET_ID_BASE - (STATE_PACKET_ID_STRIDE - 1))
+    // STATE_PACKET_ID_STRIDE
+)
 CHUNK_SIZE = 3000
+_last_state_packet_generation = -1
 
 
 class _GameTicks(int):
@@ -87,14 +94,22 @@ def _sim_id_int(sim_id):
 
 
 def encode_snapshot_to_packets(sim_id, snapshot, now_ticks):
+    global _last_state_packet_generation
     raw_json = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"))
     chunks = [raw_json[index : index + CHUNK_SIZE] for index in range(0, len(raw_json), CHUNK_SIZE)] or ["{}"]
     total = len(chunks)
+    if _last_state_packet_generation < 0:
+        generation = int(time.time() * 1000) % (STATE_PACKET_MAX_GENERATION + 1)
+    else:
+        generation = _last_state_packet_generation + 1
+        if generation > STATE_PACKET_MAX_GENERATION:
+            generation = 0
+    _last_state_packet_generation = generation
     packets = []
     for index, chunk in enumerate(chunks):
         packets.append(
             _StatePacketPost(
-                post_id=STATE_PACKET_ID_BASE + index,
+                post_id=STATE_PACKET_ID_BASE + generation * STATE_PACKET_ID_STRIDE + index,
                 author_sim_id=_sim_id_int(sim_id),
                 target_sim_id=total,
                 post_type=STATE_PACKET_TYPE,
@@ -182,7 +197,7 @@ class VerifiedUIBridge(object):
                     op = ShowSocialMediaPanel(
                         sim_id,
                         followers_count,
-                        native_feed + packets,
+                        packets + native_feed,
                         messages,
                         is_update=is_update,
                         has_new_posts=has_new_posts,
@@ -303,8 +318,17 @@ class VerifiedUIBridge(object):
     def push_update(self, sim_id, is_update=True):
         try:
             import services
-
-            service = services.get_social_media_service()
+            service = None
+            try:
+                service = services.get_social_media_service()
+            except Exception:
+                service = None
+            if service is None:
+                try:
+                    from social_media.social_media_service import SocialMediaService
+                    service = SocialMediaService.instance()
+                except Exception:
+                    service = None
             if service is not None:
                 service.show_social_media_dialog(_sim_id_int(sim_id), is_update=is_update)
         except Exception:

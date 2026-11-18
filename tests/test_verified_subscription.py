@@ -187,6 +187,8 @@ class TestVerifiedSubscription(VerifiedSubscriptionTestBase):
         self.assertTrue(result["ok"], msg=result)
         self.assertEqual(self.manager.get_record(101)["status"], "active")
         self.assertEqual(self.funds.money, 750)
+        self.assertEqual(result["snapshot"]["subscription"]["status"], "active")
+        self.assertTrue(result["snapshot"]["subscription"]["benefits_active"])
 
         self.advance_days(7)
         self.funds.money = 0
@@ -197,6 +199,131 @@ class TestVerifiedSubscription(VerifiedSubscriptionTestBase):
         self.assertEqual(record["status"], "suspended")
         self.assertFalse(self.billing.benefits_active(record, self.now))
         self.assertTrue(any(item["status"] == "failed" for item in record["payment_history"]))
+
+    def test_automatic_retries_stop_when_grace_period_ends(self):
+        self.assertTrue(self.subscribe()["ok"])
+        self.funds.money = 0
+        self.advance_days(7)
+        self.manager.handle_action(101, "refresh")
+
+        for _ in range(3):
+            self.now += self.billing.retry_ticks
+            self.manager.handle_action(101, "refresh")
+
+        record = self.manager.get_record(101)
+        self.assertEqual(record["status"], "grace_period")
+        self.assertEqual(
+            sum(1 for payment in record["payment_history"] if payment["status"] == "failed"),
+            4,
+        )
+
+        self.now += self.billing.retry_ticks
+        self.manager.handle_action(101, "refresh")
+        self.assertEqual(record["status"], "suspended")
+        self.assertEqual(
+            sum(1 for payment in record["payment_history"] if payment["status"] == "failed"),
+            4,
+        )
+
+    def test_retry_payment_does_not_override_credibility_suspension(self):
+        self.assertTrue(self.subscribe()["ok"])
+        record = self.manager.get_record(101)
+        record.update(
+            {
+                "status": "suspended",
+                "suspension_reason": "payment",
+                "credibility_score": 3,
+                "brand_safety_score": 12,
+                "active_strikes": 19,
+                "reapplication_cooldown_until": self.now + self.adapter.ticks_from_hours(72),
+            }
+        )
+
+        result = self.manager.handle_action(101, "retry_payment")
+        self.assertTrue(result["ok"], msg=result)
+        self.assertEqual(result["code"], "payment_succeeded_reputation_suspended")
+        self.assertEqual(record["status"], "suspended")
+        self.assertEqual(record["suspension_reason"], "credibility")
+        self.assertEqual(self.funds.money, 500)
+
+        record["suspension_reason"] = ""
+        record["next_billing_at"] = self.now - 1
+        snapshot = self.manager.build_snapshot(101)
+        self.assertFalse(snapshot["permissions"]["can_retry_payment"])
+        self.assertEqual(snapshot["subscription"]["suspension_reason"], "credibility")
+        self.assertIn("3/100", snapshot["subscription"]["status_detail"])
+        self.assertEqual(self.funds.money, 500)
+
+        duplicate = self.manager.handle_action(101, "retry_payment")
+        self.assertFalse(duplicate["ok"])
+        self.assertEqual(duplicate["code"], "reputation_suspension")
+        self.assertEqual(self.funds.money, 500)
+
+    def test_manual_retry_is_single_attempt_and_has_cooldown(self):
+        self.assertTrue(self.subscribe()["ok"])
+        record = self.manager.get_record(101)
+        record.update(
+            {
+                "status": "payment_failed",
+                "grace_period_end": self.now + self.adapter.ticks_from_days(2),
+                "next_billing_at": self.now,
+            }
+        )
+        failed_payment = {
+            "ok": False,
+            "code": "payment_failed",
+            "message": "The household could not complete the Simoleon payment.",
+        }
+
+        with mock.patch.object(self.billing, "charge", return_value=failed_payment) as charge:
+            result = self.manager.handle_action(101, "retry_payment")
+            self.assertFalse(result["ok"])
+            self.assertEqual(charge.call_count, 1)
+
+            repeated = self.manager.handle_action(101, "retry_payment")
+            self.assertFalse(repeated["ok"])
+            self.assertEqual(repeated["code"], "retry_cooldown")
+            self.assertEqual(charge.call_count, 1)
+
+        snapshot = self.manager.build_snapshot(101)
+        self.assertFalse(snapshot["permissions"]["can_retry_payment"])
+        self.assertIn("prevent duplicate charges", snapshot["subscription"]["status_detail"])
+        self.assertEqual(record["last_manual_retry_at"], self.now)
+
+    def test_stale_payment_pending_record_is_not_charged_again(self):
+        self.assertTrue(self.subscribe()["ok"])
+        record = self.manager.get_record(101)
+        record["status"] = "payment_pending"
+        record["next_billing_at"] = self.now - 1
+
+        with mock.patch.object(self.billing, "charge") as charge:
+            self.assertFalse(self.billing.process_due(record, self.now))
+            charge.assert_not_called()
+        self.assertEqual(record["status"], "payment_pending")
+
+        snapshot = self.manager.build_snapshot(101)
+        self.assertFalse(snapshot["permissions"]["can_retry_payment"])
+        self.assertFalse(snapshot["subscription"]["benefits_active"])
+        self.assertIn("avoid a duplicate payment", snapshot["subscription"]["status_detail"])
+
+    def test_credibility_suspension_recovers_after_cooldown_and_clean_posts(self):
+        self.assertTrue(self.subscribe()["ok"])
+        record = self.manager.get_record(101)
+        record.update(
+            {
+                "status": "suspended",
+                "suspension_reason": "credibility",
+                "credibility_score": 23,
+                "reapplication_cooldown_until": self.now,
+                "post_times_6h": [],
+            }
+        )
+
+        post = self.manager.on_verified_post_attempt(101)
+        self.assertTrue(post["allowed"])
+        self.assertTrue(post["verified"])
+        self.assertEqual(record["status"], "active")
+        self.assertGreaterEqual(record["credibility_score"], 25)
 
     def test_cancellation_retains_benefits_then_expires_without_deleting_data(self):
         self.assertTrue(self.subscribe()["ok"])
@@ -315,7 +442,7 @@ class TestVerifiedSubscription(VerifiedSubscriptionTestBase):
             "preserve across save-slot switch",
         )
 
-    def test_native_follower_recount_gives_all_sims_a_minimum_gain(self):
+    def test_native_follower_recount_only_changes_verified_sims(self):
         from sbv.verified.verified_game_hooks import _install_verified_perk_hooks
 
         class FakePostType(object):
@@ -347,7 +474,7 @@ class TestVerifiedSubscription(VerifiedSubscriptionTestBase):
             native_service = FakeSocialMediaService(self.manager)
             self.assertEqual(native_service.calculate_social_media_followers(102), "native-result")
 
-        self.assertEqual(self.followers["102"], 1)
+        self.assertEqual(self.followers.get("102", 0), 0)
 
     def test_feed_priority_and_contact_priority_are_real(self):
         self.assertTrue(self.subscribe()["ok"])
@@ -358,10 +485,10 @@ class TestVerifiedSubscription(VerifiedSubscriptionTestBase):
 
         posts = [NativePost(102), NativePost(101), NativePost(102)]
         prioritized = self.manager.prioritize_feed(posts, 102)
-        # The native panel reverses its input, so verified posts are moved to
-        # the end of the Python list to appear first in the visible feed.
-        self.assertEqual(prioritized[-1].author_sim_id, 101)
-        self.assertEqual([post.author_sim_id for post in prioritized[:-1]], [102, 102])
+        # The native panel reverses its input. Viewer-owned/tagged posts and
+        # verified posts are moved to the end so they appear at the top.
+        self.assertEqual(prioritized[-1].author_sim_id, 102)
+        self.assertEqual(prioritized[0].author_sim_id, 101)
 
         candidates = [FakeCandidate(self.sims[102]), FakeCandidate(self.sims[101])]
         prioritized_candidates = self.manager.prioritize_contacts(candidates)
@@ -389,18 +516,51 @@ class TestVerifiedSubscription(VerifiedSubscriptionTestBase):
         snapshot = self.manager.build_snapshot(101)
         self.assertEqual(snapshot["subscription"]["status_label"], "Payment Pending")
 
+    def test_hourly_systems_are_idempotent_between_ticks(self):
+        self.assertTrue(self.subscribe()["ok"])
+        record = self.manager.get_record(101)
+        record["social_battery"] = 50.0
+        self.manager.process_due_all()
+        self.manager.process_due_all()
+        self.assertEqual(record["social_battery"], 50.0)
+
+        self.now += self.adapter.ticks_from_hours(1)
+        self.manager.process_due_all()
+        self.assertEqual(record["social_battery"], 55.0)
+        self.manager.process_due_all()
+        self.assertEqual(record["social_battery"], 55.0)
+
+    def test_creator_payout_has_daily_cap(self):
+        self.assertTrue(self.subscribe()["ok"])
+        record = self.manager.get_record(101)
+        self.assertEqual(self.manager._accrue_creator_payout(record, 400, self.now), 250)
+        self.assertEqual(self.manager._accrue_creator_payout(record, 100, self.now), 0)
+        self.assertEqual(record["pending_payout"], 250)
+
+    def test_verified_post_spam_is_blocked_without_resetting_inactivity_clock(self):
+        self.assertTrue(self.subscribe()["ok"])
+        first = self.manager.on_verified_post_attempt(101)
+        second = self.manager.on_verified_post_attempt(101)
+        last_real_post = self.manager.get_record(101)["last_post_at"]
+        blocked = self.manager.on_verified_post_attempt(101)
+        self.assertTrue(first["allowed"])
+        self.assertTrue(second["allowed"])
+        self.assertFalse(blocked["allowed"])
+        self.assertEqual(self.manager.get_record(101)["last_post_at"], last_real_post)
+
     def test_state_packet_roundtrip(self):
         self.assertTrue(self.subscribe()["ok"])
         snapshot = self.manager.build_snapshot(101)
         packets = encode_snapshot_to_packets(101, snapshot, self.now)
         self.assertGreaterEqual(len(packets), 1)
         self.assertTrue(all(packet.post_type == 0 for packet in packets))
-        self.assertEqual(packets[0].post_id, 9000000)
+        self.assertLessEqual(packets[-1].post_id, 2147483647)
         joined = "".join(packet.post_text.tokens[0].raw_text for packet in packets)
         parsed = json.loads(joined)
         self.assertEqual(parsed["account"]["sim_id"], "101")
         self.assertEqual(parsed["subscription"]["status"], "active")
         self.assertEqual(parsed["plan"]["price_label"], "\u00a7250")
+        self.assertEqual(parsed["pr_studio"]["tier_label"], "Blue")
 
     def test_price_is_configurable(self):
         config_file = os.path.join(self.tmp, "verified_config.json")
@@ -481,11 +641,12 @@ class TestVerifiedSubscription(VerifiedSubscriptionTestBase):
         # Post created & NPC reactions grant followers, Fame, and ad revenue
         post_perk = self.manager.on_verified_post_created(101)
         self.assertIsNotNone(post_perk)
-        self.assertEqual(post_perk["followers_added"], 12)
-        self.assertGreaterEqual(post_perk["payout_earned"], 35)
-        react_perk = self.manager.on_verified_post_reaction(101)
+        self.assertEqual(post_perk["followers_added"], 0)
+        self.assertEqual(post_perk["payout_earned"], 0)
+        self.assertEqual(self.manager.get_record(101)["pending_payout"], 0)
+        react_perk = self.manager.on_verified_post_reaction(101, {"polarity": "positive"})
         self.assertEqual(react_perk["followers_added"], 3)
-        self.assertEqual(react_perk["payout_earned"], 10)
+        self.assertEqual(react_perk["payout_earned"], 2)
 
         # Boost Reach starts a non-instant 4-hour Spotlight Campaign, then enforces 24h cooldown
         before_boost_followers = self.followers["101"]
@@ -549,6 +710,8 @@ class TestVerifiedSubscription(VerifiedSubscriptionTestBase):
 
         # Algorithm follower recount boosts positive gain by 2.5x and prevents loss
         self.assertGreater(self.manager.on_verified_follower_recount(101, 20), 0)
+        self.assertEqual(self.manager.on_verified_follower_recount(101, -5), 0)
+        self.now += self.adapter.ticks_per_day()
         self.assertGreaterEqual(self.manager.on_verified_follower_recount(101, -5), 25)
 
         # Adding a contact grants friendship clout bonus

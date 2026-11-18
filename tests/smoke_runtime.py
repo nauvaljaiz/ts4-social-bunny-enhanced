@@ -80,6 +80,17 @@ class FakeLoc(object):
         return self.text
 
 
+class FakePost(object):
+    def __init__(self, post_id):
+        self.post_id = post_id
+        self.author_sim_id = 202
+        self.target_sim_id = 303
+        self.post_type = 0
+        self.post_time = FakeNow()
+        self.post_text = FakeLoc("native post")
+        self.reactions = []
+
+
 class FakeLocalizationHelperTuning(object):
     @staticmethod
     def get_raw_text(text):
@@ -225,6 +236,14 @@ def main():
     print("subscribed status:", record["status"], "funds:", FakeHousehold.funds.money)
     assert record["status"] == "active"
     assert FakeHousehold.funds.money == 750
+
+    service.posts = [FakePost(post_id) for post_id in range(30)]
+    service.show_social_media_dialog(101, is_update=True)
+    feed = FakeShowSocialMediaPanel.last_op.args[2]
+    state_packets = [item for item in feed if int(getattr(item, "post_id", 0)) >= 9000000]
+    assert len(state_packets) >= 1, "state packets were lost with a full native feed"
+    assert feed[:len(state_packets)] == state_packets, "state packets must precede capped native feed"
+    print("full-feed state packets:", len(state_packets), "of", len(feed), "items")
 
     print("runtime smoke test OK")
 
